@@ -42,6 +42,16 @@ export default async function AdminLayout({
       icon: Wallet,
     },
     {
+      name: 'KYC Queue',
+      href: '/admin/kyc',
+      icon: Shield,
+    },
+    {
+      name: 'Disputes',
+      href: '/admin/disputes',
+      icon: Shield,
+    },
+    {
       name: 'Settings',
       href: '/admin/settings',
       icon: Settings,

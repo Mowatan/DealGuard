@@ -1,27 +1,27 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { quarantineApi, ApiError } from '@/lib/api-client';
-import { Shield, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { kycApi, ApiError } from '@/lib/api-client';
+import { Users, CheckCircle, XCircle, Clock } from 'lucide-react';
 
-export default function EvidenceReviewPage() {
-  const [quarantined, setQuarantined] = useState<any[]>([]);
+export default function KYCQueuePage() {
+  const [pendingKyc, setPendingKyc] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchQuarantined();
+    fetchPendingKyc();
   }, []);
 
-  const fetchQuarantined = async () => {
+  const fetchPendingKyc = async () => {
     try {
-      const data = await quarantineApi.listQuarantined();
-      setQuarantined(data || []);
+      const data = await kycApi.listPending();
+      setPendingKyc(data || []);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError('Failed to load quarantined evidence');
+        setError('Failed to load KYC queue');
       }
       console.error(err);
     } finally {
@@ -29,10 +29,23 @@ export default function EvidenceReviewPage() {
     }
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'VERIFIED':
+        return 'bg-green-100 text-green-700';
+      case 'PENDING':
+        return 'bg-yellow-100 text-yellow-700';
+      case 'REJECTED':
+        return 'bg-red-100 text-red-700';
+      default:
+        return 'bg-gray-100 text-gray-700';
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-gray-900">Evidence Review</h1>
+        <h1 className="text-3xl font-bold text-gray-900">KYC Queue</h1>
         <p className="text-center text-gray-600">Loading...</p>
       </div>
     );
@@ -41,9 +54,9 @@ export default function EvidenceReviewPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Evidence Review</h1>
+        <h1 className="text-3xl font-bold text-gray-900">KYC Queue</h1>
         <p className="mt-2 text-sm text-gray-600">
-          Review and manage quarantined evidence
+          Review and verify party KYC submissions
         </p>
       </div>
 
@@ -57,10 +70,10 @@ export default function EvidenceReviewPage() {
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center">
-            <AlertTriangle className="w-8 h-8 text-yellow-600 mr-3" />
+            <Clock className="w-8 h-8 text-yellow-600 mr-3" />
             <div>
-              <p className="text-sm font-medium text-gray-600">Quarantined</p>
-              <p className="text-2xl font-semibold text-gray-900">{quarantined.length}</p>
+              <p className="text-sm font-medium text-gray-600">Pending Review</p>
+              <p className="text-2xl font-semibold text-gray-900">{pendingKyc.length}</p>
             </div>
           </div>
         </div>
@@ -68,7 +81,7 @@ export default function EvidenceReviewPage() {
           <div className="flex items-center">
             <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
             <div>
-              <p className="text-sm font-medium text-gray-600">Approved</p>
+              <p className="text-sm font-medium text-gray-600">Verified</p>
               <p className="text-2xl font-semibold text-gray-900">-</p>
             </div>
           </div>
@@ -84,30 +97,27 @@ export default function EvidenceReviewPage() {
         </div>
       </div>
 
-      {/* Evidence List */}
+      {/* KYC List */}
       <div className="bg-white rounded-lg border border-gray-200">
-        {quarantined.length === 0 ? (
+        {pendingKyc.length === 0 ? (
           <div className="px-6 py-12 text-center text-gray-500">
-            <Shield className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-            <p>No quarantined evidence</p>
-            <p className="text-sm mt-2">Quarantined items will appear here for review</p>
+            <Users className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+            <p>No pending KYC submissions</p>
+            <p className="text-sm mt-2">KYC submissions will appear here when parties submit documents</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {quarantined.map((item: any) => (
+            {pendingKyc.map((item: any) => (
               <div key={item.id} className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-medium text-gray-900">{item.subject || 'Untitled'}</h3>
-                    <p className="text-sm text-gray-500 mt-1">Deal: {item.dealId}</p>
+                    <h3 className="text-sm font-medium text-gray-900">{item.partyName || 'Unknown Party'}</h3>
+                    <p className="text-sm text-gray-500 mt-1">Party ID: {item.partyId}</p>
                   </div>
-                  <span className="inline-flex px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                    QUARANTINED
+                  <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(item.status)}`}>
+                    {item.status}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Submitted {new Date(item.createdAt).toLocaleDateString()}
-                </p>
               </div>
             ))}
           </div>
