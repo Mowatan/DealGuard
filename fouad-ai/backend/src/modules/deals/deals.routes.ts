@@ -27,7 +27,10 @@ export async function dealsRoutes(server: FastifyInstance) {
     async (request, reply) => {
     try {
       const body = createDealSchema.parse(request.body);
-      const deal = await dealService.createDeal(body);
+      const deal = await dealService.createDeal({
+        ...body,
+        userId: request.user!.id,
+      });
       return reply.code(201).send(deal);
     } catch (error) {
       if (error instanceof z.ZodError) {

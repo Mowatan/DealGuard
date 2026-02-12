@@ -87,7 +87,7 @@ export async function listEvidenceByDeal(dealId: string, status?: EvidenceStatus
         select: {
           id: true,
           title: true,
-          sequence: true,
+          order: true,
         },
       },
     },

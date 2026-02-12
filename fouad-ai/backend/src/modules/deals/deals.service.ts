@@ -13,6 +13,7 @@ interface CreateDealParams {
     contactEmail: string;
     contactPhone?: string;
   }>;
+  userId: string;
 }
 
 export async function createDeal(params: CreateDealParams) {
@@ -52,7 +53,7 @@ export async function createDeal(params: CreateDealParams) {
   await createAuditLog({
     dealId: deal.id,
     eventType: 'DEAL_CREATED',
-    actor: 'SYSTEM', // Replace with actual user ID from auth
+    actor: params.userId,
     entityType: 'Deal',
     entityId: deal.id,
     newState: { status: deal.status },
@@ -124,7 +125,7 @@ export async function getDealById(id: string) {
         where: { isEffective: true },
         include: {
           milestones: {
-            orderBy: { sequence: 'asc' },
+            orderBy: { order: 'asc' },
           },
         },
       },

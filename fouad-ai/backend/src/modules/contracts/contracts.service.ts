@@ -10,7 +10,7 @@ interface CreateContractParams {
   milestones?: Array<{
     title: string;
     description?: string;
-    sequence: number;
+    order: number;
     conditionsJson?: Record<string, any>;
     evidenceChecklistJson?: Record<string, any>;
     releaseAmount?: number;
@@ -71,7 +71,7 @@ export async function getContractById(id: string) {
     where: { id },
     include: {
       milestones: {
-        orderBy: { sequence: 'asc' },
+        orderBy: { order: 'asc' },
         include: {
           obligations: {
             include: {

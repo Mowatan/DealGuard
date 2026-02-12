@@ -10,7 +10,7 @@ const createContractSchema = z.object({
   milestones: z.array(z.object({
     title: z.string(),
     description: z.string().optional(),
-    sequence: z.number(),
+    order: z.number(),
     conditionsJson: z.record(z.any()).optional(),
     evidenceChecklistJson: z.record(z.any()).optional(),
     releaseAmount: z.number().optional(),
