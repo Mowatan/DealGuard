@@ -2,6 +2,8 @@ import { dealsApi } from '@/lib/api-client';
 import { FileText, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 async function getDashboardData() {
   try {
     const deals = await dealsApi.list({ limit: 100 });

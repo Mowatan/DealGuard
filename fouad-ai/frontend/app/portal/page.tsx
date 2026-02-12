@@ -2,6 +2,8 @@ import { dealsApi } from '@/lib/api-client';
 import Link from 'next/link';
 import { FileText, Clock, CheckCircle, Upload } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 export default async function PortalPage() {
   let deals;
   try {
