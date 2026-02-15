@@ -294,6 +294,27 @@ export async function dealsRoutes(server: FastifyInstance) {
     }
   );
 
+  // Get deal amendments
+  server.get(
+    '/:id/amendments',
+    {
+      preHandler: [authenticate],
+    },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+
+      try {
+        const amendments = await dealService.getDealAmendments(id);
+        return reply.code(200).send(amendments);
+      } catch (error) {
+        if (error instanceof Error) {
+          return reply.code(400).send({ error: error.message });
+        }
+        return reply.code(500).send({ error: 'Failed to fetch amendments' });
+      }
+    }
+  );
+
   // Propose deal amendment (Phase 2: When parties have agreed)
   server.post(
     '/:id/amendments',
@@ -490,6 +511,64 @@ export async function dealsRoutes(server: FastifyInstance) {
           return reply.code(400).send({ error: error.message });
         }
         return reply.code(500).send({ error: 'Failed to dispute deletion' });
+      }
+    }
+  );
+
+  // ===== ADMIN ROUTES =====
+
+  // Get all disputed amendments (admin only)
+  server.get(
+    '/admin/amendments/disputed',
+    {
+      preHandler: [authenticate, requireCaseOfficer],
+    },
+    async (request, reply) => {
+      try {
+        const amendments = await dealService.getDisputedAmendments();
+        return reply.code(200).send(amendments);
+      } catch (error) {
+        if (error instanceof Error) {
+          return reply.code(400).send({ error: error.message });
+        }
+        return reply.code(500).send({ error: 'Failed to fetch disputed amendments' });
+      }
+    }
+  );
+
+  // Resolve amendment dispute (admin only)
+  server.post(
+    '/admin/amendments/:id/resolve',
+    {
+      preHandler: [authenticate, requireCaseOfficer],
+    },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+
+      try {
+        const bodyData = request.body as any;
+        const resolutionSchema = z.object({
+          resolutionType: z.enum(['APPROVE', 'REJECT', 'REQUEST_COMPROMISE']),
+          notes: z.string().min(1),
+        });
+
+        const body = resolutionSchema.parse(bodyData);
+        const result = await dealService.resolveAmendmentDispute(
+          id,
+          body.resolutionType,
+          body.notes,
+          request.user!.id,
+          request.user!.name
+        );
+        return reply.code(200).send(result);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return reply.code(400).send({ error: 'Validation error', details: error.errors });
+        }
+        if (error instanceof Error) {
+          return reply.code(400).send({ error: error.message });
+        }
+        return reply.code(500).send({ error: 'Failed to resolve amendment' });
       }
     }
   );
