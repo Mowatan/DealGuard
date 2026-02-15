@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle2, Circle, Clock, AlertCircle, User } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useAuth } from '@clerk/nextjs';
 
 interface ProgressStage {
   id: string;
@@ -50,6 +51,7 @@ export function ProgressTracker({ dealId }: ProgressTrackerProps) {
   const [progressData, setProgressData] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { getToken } = useAuth();
 
   useEffect(() => {
     fetchProgress();
@@ -62,10 +64,12 @@ export function ProgressTracker({ dealId }: ProgressTrackerProps) {
 
   async function fetchProgress() {
     try {
+      const token = await getToken();
       const res = await fetch(`/api/deals/${dealId}/progress`, {
         credentials: 'include',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` })
         }
       });
 

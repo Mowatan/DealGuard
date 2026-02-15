@@ -174,7 +174,7 @@ export default function DealDetailPage() {
     try {
       setLoadingAmendments(true);
       const token = await getToken();
-      const response = await apiClient.get(`/deals/${dealId}/amendments`, {
+      const response = await apiClient.get(`/api/deals/${dealId}/amendments`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setAmendments(response.data || []);
