@@ -1,0 +1,7 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+workingDirectory = "fouad-ai/backend"
+
+[deploy]
+startCommand = "npm start"
