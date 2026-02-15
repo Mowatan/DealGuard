@@ -51,25 +51,36 @@ export function ProgressTracker({ dealId }: ProgressTrackerProps) {
   const [progressData, setProgressData] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { getToken } = useAuth();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
 
   useEffect(() => {
-    fetchProgress();
+    // Only fetch if auth is loaded and user is signed in
+    if (isLoaded && isSignedIn) {
+      fetchProgress();
 
-    // Poll every 30 seconds for updates
-    const interval = setInterval(fetchProgress, 30000);
+      // Poll every 30 seconds for updates
+      const interval = setInterval(fetchProgress, 30000);
 
-    return () => clearInterval(interval);
-  }, [dealId]);
+      return () => clearInterval(interval);
+    } else if (isLoaded && !isSignedIn) {
+      setLoading(false);
+      setError('Please sign in to view progress');
+    }
+  }, [dealId, isLoaded, isSignedIn]);
 
   async function fetchProgress() {
     try {
       const token = await getToken();
+
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
       const res = await fetch(`/api/deals/${dealId}/progress`, {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` })
+          Authorization: `Bearer ${token}`
         }
       });
 
