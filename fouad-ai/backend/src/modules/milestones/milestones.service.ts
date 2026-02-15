@@ -1,5 +1,6 @@
 import { prisma } from '../../lib/prisma';
 import { createAuditLog } from '../../lib/audit';
+import { emailSendingQueue } from '../../lib/queue';
 import { MilestoneStatus } from '@prisma/client';
 
 // ============================================================================
@@ -415,7 +416,13 @@ export async function autoApproveMilestone(milestoneId: string) {
     where: { id: milestoneId },
     include: {
       contract: {
-        select: { dealId: true },
+        include: {
+          deal: {
+            include: {
+              parties: true,
+            },
+          },
+        },
       },
     },
   });
@@ -441,7 +448,7 @@ export async function autoApproveMilestone(milestoneId: string) {
     });
     if (systemUser) {
       await createAuditLog({
-        dealId: milestone.contract.dealId,
+        dealId: milestone.contract.deal.id,
         eventType: 'MILESTONE_APPROVED',
         actor: systemUser.id,
         entityType: 'Milestone',
@@ -452,6 +459,56 @@ export async function autoApproveMilestone(milestoneId: string) {
     }
   } catch (error) {
     console.error('Failed to create audit log:', error);
+  }
+
+  // Send notification to all parties
+  const partyEmails = milestone.contract.deal.parties.map(party => party.contactEmail);
+
+  // Count total milestones and completed milestones
+  const allMilestones = await prisma.milestone.findMany({
+    where: { contractId: milestone.contractId },
+    select: { id: true, name: true, status: true, order: true },
+    orderBy: { order: 'asc' },
+  });
+
+  const completedCount = allMilestones.filter(m =>
+    m.status === MilestoneStatus.APPROVED || m.id === milestoneId
+  ).length;
+  const totalCount = allMilestones.length;
+  const progressPercentage = Math.round((completedCount / totalCount) * 100);
+  const isLastMilestone = completedCount === totalCount;
+  const nextMilestone = allMilestones.find(m =>
+    m.status !== MilestoneStatus.APPROVED && m.id !== milestoneId
+  );
+
+  const nextStepsSection = isLastMilestone
+    ? '<div class="success-box"><h3>🎉 All Milestones Complete!</h3><p>This was the final milestone. The deal has successfully reached completion. All obligations have been fulfilled according to the contract terms.</p></div>'
+    : `<p><strong>Next Milestone:</strong> ${nextMilestone?.name || 'None'}</p><p>Continue working towards the next milestone to keep the deal progressing.</p>`;
+
+  for (const email of partyEmails) {
+    await emailSendingQueue.add(
+      'send-milestone-approved',
+      {
+        to: email,
+        subject: `Milestone Approved: ${milestone.name} - Deal ${milestone.contract.deal.dealNumber}`,
+        template: 'milestone-approved',
+        variables: {
+          dealNumber: milestone.contract.deal.dealNumber,
+          dealTitle: milestone.contract.deal.title,
+          milestoneTitle: milestone.name,
+          milestoneOrder: milestone.order,
+          totalMilestones: totalCount,
+          completedMilestones: completedCount,
+          progressPercentage: progressPercentage,
+          approvedBy: 'System (Auto-approved)',
+          approvedAt: new Date().toLocaleString(),
+          nextStepsSection: nextStepsSection,
+        },
+        dealId: milestone.contract.deal.id,
+        priority: 7,
+      },
+      { priority: 7 }
+    );
   }
 
   return updated;

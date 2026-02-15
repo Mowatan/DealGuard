@@ -2,7 +2,7 @@ import { prisma } from '../../lib/prisma';
 import { storage } from '../../lib/storage';
 import { createAuditLog } from '../../lib/audit';
 import { createHash } from 'crypto';
-import { blockchainAnchorQueue } from '../../lib/queue';
+import { blockchainAnchorQueue, emailSendingQueue } from '../../lib/queue';
 
 interface CreateContractParams {
   dealId: string;
@@ -41,8 +41,16 @@ export async function createContractVersion(
       milestones: params.milestones
         ? {
             create: params.milestones.map((m) => ({
-              ...m,
+              name: m.title,
+              description: m.description,
+              order: m.order,
+              conditionsJson: m.conditionsJson,
+              evidenceChecklistJson: m.evidenceChecklistJson,
+              releaseAmount: m.releaseAmount,
+              returnAmount: m.returnAmount,
+              currency: m.currency,
               deadline: m.deadline ? new Date(m.deadline) : null,
+              gracePeriodDays: m.gracePeriodDays,
             })),
           }
         : undefined,
@@ -208,6 +216,31 @@ export async function acceptContract(contractId: string, partyId: string) {
       eventId: contractId,
       dataHash,
     });
+
+    // Send email notifications to all parties
+    const deal = contract.deal;
+    const partyEmails = deal.parties.map(party => party.contactEmail);
+
+    for (const party of partyEmails) {
+      await emailSendingQueue.add(
+        'send-contract-effective',
+        {
+          to: party,
+          subject: `Contract Effective: Deal ${deal.dealNumber}`,
+          template: 'contract-effective',
+          variables: {
+            dealNumber: deal.dealNumber,
+            dealTitle: deal.title,
+            contractVersion: contract.version,
+            effectiveDate: new Date().toLocaleString(),
+            blockchainHash: dataHash,
+          },
+          dealId: deal.id,
+          priority: 7,
+        },
+        { priority: 7 }
+      );
+    }
   }
 
   return acceptance;

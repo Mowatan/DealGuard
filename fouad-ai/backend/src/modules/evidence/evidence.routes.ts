@@ -3,6 +3,7 @@ import { z } from 'zod';
 import * as evidenceService from './evidence.service';
 import { authenticate } from '../../middleware/auth';
 import { requireCaseOfficer } from '../../middleware/authorize';
+import { EvidenceSourceType } from '@prisma/client';
 
 const createEvidenceSchema = z.object({
   dealId: z.string(),
@@ -43,6 +44,7 @@ export async function evidenceRoutes(server: FastifyInstance) {
 
       const evidence = await evidenceService.createEvidence({
         ...validated,
+        sourceType: validated.sourceType as EvidenceSourceType,
         files,
         actorId,
       });

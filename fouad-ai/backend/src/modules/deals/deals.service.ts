@@ -1,7 +1,8 @@
 import { prisma } from '../../lib/prisma';
 import { createAuditLog, getAuditTrail } from '../../lib/audit';
 import { emailSendingQueue } from '../../lib/queue';
-import { DealStatus, InvitationStatus, AmendmentStatus, DeletionStatus, PartyResponseType } from '@prisma/client';
+import { DealStatus, InvitationStatus, AmendmentStatus, DeletionStatus, PartyResponseType, ServiceTier } from '@prisma/client';
+import { calculateServiceFee, validateServiceTier } from './fee-calculator';
 import crypto from 'crypto';
 
 interface CreateDealParams {
@@ -12,7 +13,7 @@ interface CreateDealParams {
   totalAmount?: number;
 
   // Service tier and fees
-  serviceTier: ServiceTier;
+  serviceTier?: ServiceTier;
   estimatedValue?: number;
 
   parties: Array<{
@@ -35,15 +36,17 @@ interface CreateDealParams {
 }
 
 export async function createDeal(params: CreateDealParams) {
-  // Validate service tier
-  const validation = validateServiceTier(params.serviceTier, params.estimatedValue);
+  // Default service tier to GOVERNANCE_ADVISORY if not provided
+  const serviceTier = params.serviceTier || ServiceTier.GOVERNANCE_ADVISORY;
+
+  // Validate service tier and calculate fees
+  const validation = validateServiceTier(serviceTier, params.estimatedValue);
   if (!validation.valid) {
     throw new Error(validation.error);
   }
 
-  // Calculate service fee
   const feeResult = calculateServiceFee({
-    serviceTier: params.serviceTier,
+    serviceTier,
     estimatedValue: params.estimatedValue,
     currency: params.currency || 'EGP',
   });
@@ -69,7 +72,7 @@ export async function createDeal(params: CreateDealParams) {
       totalAmount: params.totalAmount,
 
       // Service tier and fees
-      serviceTier: params.serviceTier,
+      serviceTier,
       estimatedValue: params.estimatedValue,
       serviceFee: feeResult.serviceFee,
 

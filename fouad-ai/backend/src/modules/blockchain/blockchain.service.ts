@@ -20,7 +20,6 @@ class BlockchainService {
     const contractAddress = process.env.ANCHOR_CONTRACT_ADDRESS;
 
     if (!rpcUrl || !privateKey || !contractAddress) {
-      console.warn('Blockchain configuration incomplete - anchoring will be simulated');
       this.provider = null as any;
       this.wallet = null as any;
       this.contract = null as any;
@@ -87,6 +86,12 @@ export async function anchorToBlockchain(
         dataHash,
         status: AnchorStatus.PENDING,
         network: process.env.ETHEREUM_NETWORK || 'sepolia',
+        metadata: {
+          dealId,
+          eventType,
+          timestamp: new Date().toISOString(),
+          version: '1.0',
+        },
       },
     });
 

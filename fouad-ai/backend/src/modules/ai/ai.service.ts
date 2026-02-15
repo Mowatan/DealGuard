@@ -56,7 +56,7 @@ async function generateEvidenceMappingSuggestion(evidenceId: string) {
   let confidence = 0;
 
   for (const milestone of milestones) {
-    const milestoneText = `${milestone.title} ${milestone.description || ''}`.toLowerCase();
+    const milestoneText = `${milestone.name} ${milestone.description || ''}`.toLowerCase();
     const keywords = milestoneText.split(' ').filter(w => w.length > 3);
     
     let matchCount = 0;

@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import { Prisma } from '@prisma/client';
 import { createHash } from 'crypto';
 
 export interface AuditLogParams {
@@ -35,10 +36,10 @@ export async function createAuditLog(params: AuditLogParams) {
       actor: params.actor,
       entityType: params.entityType,
       entityId: params.entityId,
-      oldState: params.oldState || null,
-      newState: params.newState || null,
+      oldState: params.oldState ? params.oldState : Prisma.JsonNull,
+      newState: params.newState ? params.newState : Prisma.JsonNull,
       payloadHash,
-      metadata: params.metadata || null,
+      metadata: params.metadata ? params.metadata : Prisma.JsonNull,
       ipAddress: params.ipAddress,
       userAgent: params.userAgent,
     },

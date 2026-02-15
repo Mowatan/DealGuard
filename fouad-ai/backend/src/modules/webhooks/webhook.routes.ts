@@ -26,7 +26,7 @@ export async function webhookRoutes(server: FastifyInstance) {
 
       return reply.code(200).send({ success: true, message: 'Email queued for processing' });
     } catch (error) {
-      server.log.error('Error processing inbound email webhook:', error);
+      server.log.error(error, 'Error processing inbound email webhook');
       return reply.code(500).send({ error: 'Failed to process email' });
     }
   });

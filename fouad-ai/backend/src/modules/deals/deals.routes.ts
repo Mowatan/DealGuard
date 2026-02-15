@@ -3,6 +3,7 @@ import { z } from 'zod';
 import * as dealService from './deals.service';
 import { authenticate } from '../../middleware/auth';
 import { requireCaseOfficer } from '../../middleware/authorize';
+import { ServiceTier } from '@prisma/client';
 
 const createDealSchema = z.object({
   title: z.string().min(1),
@@ -96,6 +97,7 @@ export async function dealsRoutes(server: FastifyInstance) {
 
         const deal = await dealService.createDeal({
           ...body,
+          serviceTier: body.serviceTier as ServiceTier,
           userId: request.user!.id,
         });
         return reply.code(201).send(deal);

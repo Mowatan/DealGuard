@@ -5,11 +5,9 @@
  * Provides centralized fee logic used by both backend and frontend.
  */
 
-export enum ServiceTier {
-  GOVERNANCE_ADVISORY = 'GOVERNANCE_ADVISORY',
-  DOCUMENT_CUSTODY = 'DOCUMENT_CUSTODY',
-  FINANCIAL_ESCROW = 'FINANCIAL_ESCROW',
-}
+import { ServiceTier } from '@prisma/client';
+
+export { ServiceTier };
 
 export interface FeeCalculationInput {
   serviceTier: ServiceTier;
