@@ -17,6 +17,7 @@ enum UserRole {
   ADMIN
   CASE_OFFICER
   PARTY_USER
+  ESCROW_OFFICER
 }
 
 model User {
@@ -38,6 +39,7 @@ model User {
   verifiedEvidence   EvidenceItem[]      @relation("VerifiedEvidence")
   milestoneApprovals MilestoneApproval[]
   receivedDocuments  CustodyDocument[]   @relation("ReceivedDocuments")
+  escrowAssignments  EscrowAssignment[]  @relation("EscrowAssignments")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -154,6 +156,8 @@ model Deal {
   blockchainAnchors BlockchainAnchor[]
   amendments        DealAmendment[]
   deletionRequests  DealDeletionRequest[]
+  progressEvents    DealProgressEvent[]
+  escrowAssignment  EscrowAssignment?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -1065,4 +1069,61 @@ model CustodyDocument {
   @@index([dealId])
   @@index([status])
   @@index([trackingNumber])
+}
+
+// ============================================================================
+// PROGRESS TRACKING
+// ============================================================================
+
+enum ProgressStageStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED
+  SKIPPED
+}
+
+model DealProgressEvent {
+  id        String   @id @default(cuid())
+  dealId    String
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  stageKey  String   // e.g., "PARTY_INVITATION", "ESCROW_DOC_DELIVERY"
+  stageName String   // Human-readable: "Party Invitation"
+  stageOrder Int     // 1, 2, 3...
+
+  status    ProgressStageStatus @default(PENDING)
+
+  enteredAt   DateTime?
+  completedAt DateTime?
+
+  currentActor String?
+  completedBy  String?
+
+  notes       String?
+  metadata    Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dealId, stageOrder])
+  @@index([dealId, status])
+  @@unique([dealId, stageKey])
+}
+
+model EscrowAssignment {
+  id              String   @id @default(cuid())
+  dealId          String   @unique
+  deal            Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  escrowOfficerId String
+  escrowOfficer   User     @relation("EscrowAssignments", fields: [escrowOfficerId], references: [id])
+
+  assignedAt      DateTime @default(now())
+  assignedBy      String
+
+  currentMessage  String?
+  lastUpdatedAt   DateTime @updatedAt
+
+  @@index([escrowOfficerId])
 }

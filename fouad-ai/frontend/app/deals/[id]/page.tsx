@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { useAuth } from '@clerk/nextjs';
 import Link from 'next/link';
-import { dealsApi, ApiError } from '@/lib/api-client';
+import { dealsApi, milestonesApi, usersApi, ApiError, apiClient } from '@/lib/api-client';
 import {
   CheckCircle,
   Clock,
@@ -11,8 +12,16 @@ import {
   FileText,
   Users,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  FileEdit,
+  Trash2
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ProposeAmendmentModal } from '@/components/deals/amendments/ProposeAmendmentModal';
+import { PendingAmendments } from '@/components/deals/amendments/PendingAmendments';
+import { AmendmentHistory } from '@/components/deals/amendments/AmendmentHistory';
+import { DeleteDealButton } from '@/components/deals/amendments/DeleteDealButton';
+import { ProgressTracker } from '@/components/deals/ProgressTracker';
 
 interface Deal {
   id: string;
@@ -74,24 +83,80 @@ interface Deal {
     status: string;
     createdAt: string;
   }>;
+  amendments?: Array<{
+    id: string;
+    proposedBy: string;
+    proposedByName: string;
+    status: string;
+    proposedChanges: any;
+    createdAt: string;
+    updatedAt: string;
+    responses: Array<{
+      id: string;
+      partyId: string;
+      party: {
+        name: string;
+        role: string;
+      };
+      responseType: string;
+      notes?: string;
+      respondedAt: string;
+    }>;
+    adminResolution?: {
+      resolutionType: string;
+      notes: string;
+      resolvedAt: string;
+      resolvedBy: string;
+    };
+  }>;
 }
 
 export default function DealDetailPage() {
   const params = useParams();
+  const router = useRouter();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const dealId = params.id as string;
 
   const [deal, setDeal] = useState<Deal | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [approvingMilestone, setApprovingMilestone] = useState<string | null>(null);
+  const [proposeAmendmentModalOpen, setProposeAmendmentModalOpen] = useState(false);
+  const [amendments, setAmendments] = useState<any[]>([]);
+  const [loadingAmendments, setLoadingAmendments] = useState(false);
+
+  // Check authentication
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      console.warn('⚠️ User not signed in, redirecting to /sign-in');
+      router.push('/sign-in');
+    }
+  }, [isLoaded, isSignedIn, router]);
 
   useEffect(() => {
-    fetchDeal();
-  }, [dealId]);
+    if (isLoaded && isSignedIn) {
+      fetchDeal();
+      fetchCurrentUser();
+      fetchAmendments();
+    }
+  }, [dealId, isLoaded, isSignedIn]);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const token = await getToken();
+      const user = await usersApi.me(token);
+      setCurrentUser(user);
+    } catch (err) {
+      console.error('Failed to fetch current user:', err);
+    }
+  };
 
   const fetchDeal = async () => {
     try {
-      const data = await dealsApi.getById(dealId);
+      const token = await getToken();
+      const data = await dealsApi.getById(dealId, token);
       setDeal(data);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -103,6 +168,83 @@ export default function DealDetailPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchAmendments = async () => {
+    try {
+      setLoadingAmendments(true);
+      const token = await getToken();
+      const response = await apiClient.get(`/deals/${dealId}/amendments`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setAmendments(response.data || []);
+    } catch (err) {
+      console.error('Failed to fetch amendments:', err);
+      // Don't show error toast, amendments are optional
+    } finally {
+      setLoadingAmendments(false);
+    }
+  };
+
+  const handleApproveMilestone = async (milestoneId: string) => {
+    if (!currentUser || !deal) return;
+
+    // Find partyId for current user
+    const userParty = deal.parties.find(
+      (p) => p.contactEmail === currentUser.email
+    );
+
+    if (!userParty) {
+      setError('You are not a party to this deal');
+      return;
+    }
+
+    const notes = prompt('Enter approval notes (optional):');
+    if (notes === null) return; // User cancelled
+
+    setApprovingMilestone(milestoneId);
+    try {
+      const token = await getToken();
+      await milestonesApi.submitApproval(milestoneId, {
+        partyId: userParty.id,
+        notes: notes || undefined,
+      }, token);
+
+      // Refresh deal to show updated approval status
+      await fetchDeal();
+      setError(''); // Clear any previous errors
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(`Failed to approve milestone: ${err.message}`);
+      } else {
+        setError('Failed to approve milestone');
+      }
+      console.error(err);
+    } finally {
+      setApprovingMilestone(null);
+    }
+  };
+
+  const canApproveMilestone = (milestone: any): boolean => {
+    if (!currentUser || !deal) return false;
+    if (milestone.status !== 'READY_FOR_REVIEW') return false;
+
+    // Find current user's party
+    const userParty = deal.parties.find(
+      (p) => p.contactEmail === currentUser.email
+    );
+
+    if (!userParty) return false;
+
+    // Check if user's role is required for approval
+    const req = milestone.approvalRequirement;
+    if (!req) return false;
+
+    if (req.requireAdminApproval && currentUser.role === 'ADMIN') return true;
+    if (req.requireBuyerApproval && userParty.role === 'BUYER') return true;
+    if (req.requireSellerApproval && userParty.role === 'SELLER') return true;
+
+    return false;
   };
 
   const getKycStatusColor = (status?: string) => {
@@ -131,10 +273,12 @@ export default function DealDetailPage() {
     return <Clock className="w-5 h-5 text-gray-400" />;
   };
 
-  if (loading) {
+  if (!isLoaded || loading) {
     return (
       <div className="min-h-screen bg-slate-50 p-8">
-        <p className="text-center text-slate-600">Loading deal...</p>
+        <p className="text-center text-slate-600">
+          {!isLoaded ? 'Checking authentication...' : 'Loading deal...'}
+        </p>
       </div>
     );
   }
@@ -189,7 +333,7 @@ export default function DealDetailPage() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex gap-2 border-b border-slate-200 mb-6">
-          {['overview', 'contract', 'evidence', 'custody'].map((tab) => (
+          {['progress', 'overview', 'contract', 'evidence', 'custody', 'amendments'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -203,6 +347,12 @@ export default function DealDetailPage() {
             </button>
           ))}
         </div>
+
+        {activeTab === 'progress' && (
+          <div>
+            <ProgressTracker dealId={deal.id} />
+          </div>
+        )}
 
         {activeTab === 'overview' && (
           <div className="space-y-6">
@@ -342,34 +492,45 @@ export default function DealDetailPage() {
                       {/* Approval Requirements & Status */}
                       {milestone.approvalRequirement && (
                         <div className="mt-3 pt-3 border-t border-slate-100">
-                          <div className="flex items-center gap-4 text-sm">
-                            <div className="flex items-center gap-2">
-                              <ShieldCheck className="w-4 h-4 text-blue-600" />
-                              <span className="text-slate-600">
-                                Approvals Required:
-                              </span>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4 text-sm">
+                              <div className="flex items-center gap-2">
+                                <ShieldCheck className="w-4 h-4 text-blue-600" />
+                                <span className="text-slate-600">
+                                  Approvals Required:
+                                </span>
+                              </div>
+                              <div className="flex gap-2">
+                                {milestone.approvalRequirement.requireAdminApproval && (
+                                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">
+                                    Admin
+                                  </span>
+                                )}
+                                {milestone.approvalRequirement.requireBuyerApproval && (
+                                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">
+                                    Buyer
+                                  </span>
+                                )}
+                                {milestone.approvalRequirement.requireSellerApproval && (
+                                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">
+                                    Seller
+                                  </span>
+                                )}
+                              </div>
+                              {milestone._count && (
+                                <span className="text-slate-600">
+                                  ({milestone._count.approvals} approval{milestone._count.approvals !== 1 ? 's' : ''} submitted)
+                                </span>
+                              )}
                             </div>
-                            <div className="flex gap-2">
-                              {milestone.approvalRequirement.requireAdminApproval && (
-                                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">
-                                  Admin
-                                </span>
-                              )}
-                              {milestone.approvalRequirement.requireBuyerApproval && (
-                                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">
-                                  Buyer
-                                </span>
-                              )}
-                              {milestone.approvalRequirement.requireSellerApproval && (
-                                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">
-                                  Seller
-                                </span>
-                              )}
-                            </div>
-                            {milestone._count && (
-                              <span className="text-slate-600">
-                                ({milestone._count.approvals} approval{milestone._count.approvals !== 1 ? 's' : ''} submitted)
-                              </span>
+                            {canApproveMilestone(milestone) && (
+                              <button
+                                onClick={() => handleApproveMilestone(milestone.id)}
+                                disabled={approvingMilestone === milestone.id}
+                                className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {approvingMilestone === milestone.id ? 'Approving...' : 'Approve Milestone'}
+                              </button>
                             )}
                           </div>
                         </div>
@@ -468,7 +629,72 @@ export default function DealDetailPage() {
             )}
           </div>
         )}
+
+        {activeTab === 'amendments' && (
+          <div className="space-y-6">
+            {/* Action Buttons */}
+            <div className="flex gap-3 justify-between items-center">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <FileEdit className="w-6 h-6" />
+                Deal Amendments
+              </h2>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setProposeAmendmentModalOpen(true)}
+                  className="gap-2"
+                >
+                  <FileEdit className="w-4 h-4" />
+                  Propose Amendment
+                </Button>
+                <DeleteDealButton
+                  dealId={dealId}
+                  dealNumber={deal.dealNumber}
+                  dealStatus={deal.status}
+                  hasCustodyItems={deal.custodyRecords.length > 0}
+                  hasEscrowFunds={deal.custodyRecords.some(r => r.status === 'HELD')}
+                  activeMilestonesCount={
+                    contract?.milestones.filter(m =>
+                      m.status !== 'APPROVED' && m.status !== 'COMPLETED'
+                    ).length || 0
+                  }
+                  onSuccess={fetchDeal}
+                />
+              </div>
+            </div>
+
+            {/* Pending Amendments */}
+            {amendments.filter(a => a.status === 'PENDING' || a.status === 'DISPUTED').length > 0 && (
+              <PendingAmendments
+                dealId={dealId}
+                amendments={amendments.filter(a => a.status === 'PENDING' || a.status === 'DISPUTED')}
+                parties={deal.parties}
+                currentUserId={currentUser?.id}
+                currentUserPartyId={
+                  deal.parties.find(p => p.contactEmail === currentUser?.email)?.id
+                }
+                onRefresh={() => {
+                  fetchAmendments();
+                  fetchDeal();
+                }}
+              />
+            )}
+
+            {/* Amendment History */}
+            <AmendmentHistory amendments={amendments} />
+          </div>
+        )}
       </div>
+
+      {/* Propose Amendment Modal */}
+      <ProposeAmendmentModal
+        dealId={dealId}
+        open={proposeAmendmentModalOpen}
+        onOpenChange={setProposeAmendmentModalOpen}
+        onSuccess={() => {
+          fetchAmendments();
+          fetchDeal();
+        }}
+      />
     </div>
   );
 }

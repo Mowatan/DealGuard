@@ -13,6 +13,8 @@ import { usersRoutes } from './modules/users/users.routes';
 import milestonesRoutes from './modules/milestones/milestones.routes';
 import kycRoutes from './modules/kyc/kyc.routes';
 import disputesRoutes from './modules/disputes/disputes.routes';
+import { custodyDocumentsRoutes } from './modules/custody-documents/custody-documents.routes';
+import { progressRoutes } from './modules/progress/progress.routes';
 
 config();
 
@@ -43,6 +45,20 @@ async function start() {
       },
     });
 
+    // Root route
+    server.get('/', async () => {
+      return {
+        name: 'DealGuard API',
+        version: '1.0.0',
+        status: 'running',
+        endpoints: {
+          health: '/health',
+          api: '/api/*',
+          webhooks: '/webhooks/*',
+        },
+      };
+    });
+
     // Health check
     server.get('/health', async () => {
       return {
@@ -58,11 +74,13 @@ async function start() {
     await server.register(contractsRoutes, { prefix: '/api/contracts' });
     await server.register(evidenceRoutes, { prefix: '/api/evidence' });
     await server.register(custodyRoutes, { prefix: '/api/custody' });
+    await server.register(custodyDocumentsRoutes, { prefix: '/api' });
     await server.register(blockchainRoutes, { prefix: '/api/blockchain' });
     await server.register(webhookRoutes, { prefix: '/webhooks' });
     await server.register(milestonesRoutes);
     await server.register(kycRoutes);
     await server.register(disputesRoutes);
+    await server.register(progressRoutes, { prefix: '/api' });
 
     const port = parseInt(process.env.PORT || '4000', 10);
     await server.listen({ port, host: '0.0.0.0' });

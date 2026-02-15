@@ -4,6 +4,7 @@ import { emailSendingQueue } from '../../lib/queue';
 import { DealStatus, InvitationStatus, AmendmentStatus, DeletionStatus, PartyResponseType, ServiceTier } from '@prisma/client';
 import { calculateServiceFee, validateServiceTier } from './fee-calculator';
 import crypto from 'crypto';
+import * as progressService from '../progress/progress.service';
 
 interface CreateDealParams {
   title: string;
@@ -232,6 +233,14 @@ export async function createDeal(params: CreateDealParams) {
         { priority: 5 }
       );
     }
+  }
+
+  // Initialize progress tracker
+  try {
+    await progressService.initializeProgressTracker(deal.id, params.userId);
+  } catch (error) {
+    console.error('Failed to initialize progress tracker:', error);
+    // Don't block deal creation if progress tracker fails
   }
 
   return deal;
@@ -655,6 +664,33 @@ export async function deleteDeal(dealId: string, userId: string, reason?: string
   }
 
   return { success: true, message: 'Deal deleted successfully' };
+}
+
+/**
+ * Get all amendments for a deal
+ */
+export async function getDealAmendments(dealId: string) {
+  const amendments = await prisma.dealAmendment.findMany({
+    where: { dealId },
+    include: {
+      responses: {
+        include: {
+          party: {
+            select: {
+              id: true,
+              name: true,
+              role: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+
+  return amendments;
 }
 
 /**
@@ -1129,4 +1165,147 @@ async function executeDeletion(deletionRequestId: string) {
   }
 
   return { success: true, message: 'Deal deleted successfully after approval' };
+}
+
+/**
+ * Get all disputed amendments (admin only)
+ */
+export async function getDisputedAmendments() {
+  const amendments = await prisma.dealAmendment.findMany({
+    where: {
+      status: AmendmentStatus.DISPUTED,
+    },
+    include: {
+      deal: {
+        select: {
+          id: true,
+          dealNumber: true,
+          title: true,
+        },
+      },
+      responses: {
+        include: {
+          party: {
+            select: {
+              id: true,
+              name: true,
+              role: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+
+  return amendments;
+}
+
+/**
+ * Resolve amendment dispute (admin override)
+ */
+export async function resolveAmendmentDispute(
+  amendmentId: string,
+  resolutionType: 'APPROVE' | 'REJECT' | 'REQUEST_COMPROMISE',
+  notes: string,
+  adminId: string,
+  adminName: string
+) {
+  const amendment = await prisma.dealAmendment.findUnique({
+    where: { id: amendmentId },
+    include: {
+      deal: {
+        include: { parties: true },
+      },
+    },
+  });
+
+  if (!amendment) {
+    throw new Error('Amendment not found');
+  }
+
+  if (amendment.status !== AmendmentStatus.DISPUTED) {
+    throw new Error('Amendment is not in disputed status');
+  }
+
+  let newStatus: AmendmentStatus;
+  let eventType: string;
+
+  if (resolutionType === 'APPROVE') {
+    // Admin approves - execute the amendment
+    newStatus = AmendmentStatus.APPROVED;
+    eventType = 'AMENDMENT_ADMIN_APPROVED';
+
+    // Apply the amendment
+    await executeAmendment(amendmentId);
+  } else if (resolutionType === 'REJECT') {
+    // Admin rejects - amendment is rejected
+    newStatus = AmendmentStatus.REJECTED;
+    eventType = 'AMENDMENT_ADMIN_REJECTED';
+
+    await prisma.dealAmendment.update({
+      where: { id: amendmentId },
+      data: { status: newStatus },
+    });
+  } else {
+    // Admin requests compromise - keep as disputed
+    newStatus = AmendmentStatus.DISPUTED;
+    eventType = 'AMENDMENT_COMPROMISE_REQUESTED';
+  }
+
+  // Create audit log
+  await createAuditLog({
+    dealId: amendment.dealId,
+    eventType,
+    actor: adminId,
+    entityType: 'DealAmendment',
+    entityId: amendmentId,
+    oldState: { status: amendment.status },
+    newState: { status: newStatus, resolutionType, adminNotes: notes },
+  });
+
+  // Notify all parties
+  const parties = amendment.deal.parties.map(p => ({
+    email: p.contactEmail,
+    name: p.name,
+  }));
+
+  for (const party of parties) {
+    await emailSendingQueue.add(
+      'send-amendment-admin-resolution',
+      {
+        to: party.email,
+        subject: `Admin Resolution for Deal ${amendment.deal.dealNumber} Amendment`,
+        template: 'amendment-admin-resolution',
+        variables: {
+          dealNumber: amendment.deal.dealNumber,
+          dealTitle: amendment.deal.title,
+          partyName: party.name,
+          resolutionType,
+          adminNotes: notes,
+          proposerName: amendment.proposedByName,
+        },
+        dealId: amendment.dealId,
+        priority: 8,
+      },
+      { priority: 8 }
+    );
+  }
+
+  return {
+    success: true,
+    message: `Amendment ${resolutionType.toLowerCase().replace('_', ' ')}`,
+    amendment: await prisma.dealAmendment.findUnique({
+      where: { id: amendmentId },
+      include: {
+        responses: {
+          include: {
+            party: true,
+          },
+        },
+      },
+    }),
+  };
 }

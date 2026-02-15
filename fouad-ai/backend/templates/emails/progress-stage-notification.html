@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress Update - {{dealNumber}}</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">📊 Deal Progress Update</h1>
+    </div>
+
+    <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+        <h2 style="color: #667eea; margin-top: 0;">Action Required: {{stageName}}</h2>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea; margin: 20px 0;">
+            <p style="margin: 0 0 10px 0;"><strong>Deal:</strong> {{dealNumber}}</p>
+            <p style="margin: 0 0 10px 0;"><strong>Title:</strong> {{dealTitle}}</p>
+            <p style="margin: 0 0 10px 0;"><strong>Current Stage:</strong> {{stageName}}</p>
+            <p style="margin: 0;"><strong>Description:</strong> {{stageDescription}}</p>
+        </div>
+
+        {{#if estimatedDuration}}
+        <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
+            <p style="margin: 0;">⏱️ <strong>Estimated Duration:</strong> {{estimatedDuration}}</p>
+        </div>
+        {{/if}}
+
+        <div style="margin: 30px 0;">
+            <p><strong>What's Next?</strong></p>
+            <p>{{#if actorType}}
+                {{#eq actorType "PARTY"}}
+                This stage requires action from the deal parties. Please review the deal and take necessary actions.
+                {{/eq}}
+                {{#eq actorType "ADMIN"}}
+                This stage is being handled by the DealGuard administration team.
+                {{/eq}}
+                {{#eq actorType "ESCROW_OFFICER"}}
+                This stage is being reviewed by your assigned escrow officer.
+                {{/eq}}
+                {{#eq actorType "SYSTEM"}}
+                This stage is automated and will complete shortly.
+                {{/eq}}
+            {{/if}}</p>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{{baseUrl}}/deals/{{dealId}}"
+               style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                      color: white;
+                      padding: 15px 40px;
+                      text-decoration: none;
+                      border-radius: 5px;
+                      display: inline-block;
+                      font-weight: bold;">
+                View Deal Progress
+            </a>
+        </div>
+
+        <div style="border-top: 1px solid #dee2e6; margin-top: 30px; padding-top: 20px; font-size: 12px; color: #6c757d;">
+            <p>You're receiving this email because you're involved in this DealGuard transaction.</p>
+            <p style="margin: 0;">© 2024 DealGuard. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
