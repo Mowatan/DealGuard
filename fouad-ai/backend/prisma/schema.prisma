@@ -20,23 +20,24 @@ enum UserRole {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  passwordHash  String   // Empty for Clerk users
-  name          String
-  role          UserRole @default(PARTY_USER)
-  clerkId       String?  @unique // Clerk user ID
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String // Empty for Clerk users
+  name         String
+  role         UserRole @default(PARTY_USER)
+  clerkId      String?  @unique // Clerk user ID
 
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
 
   // Relations
-  partyMemberships    PartyMember[]
-  auditEvents         AuditEvent[]
-  aiSuggestions       AISuggestion[]
-  submittedEvidence   EvidenceItem[]  @relation("SubmittedEvidence")
-  verifiedEvidence    EvidenceItem[]  @relation("VerifiedEvidence")
-  milestoneApprovals  MilestoneApproval[]
+  partyMemberships   PartyMember[]
+  auditEvents        AuditEvent[]
+  aiSuggestions      AISuggestion[]
+  submittedEvidence  EvidenceItem[]      @relation("SubmittedEvidence")
+  verifiedEvidence   EvidenceItem[]      @relation("VerifiedEvidence")
+  milestoneApprovals MilestoneApproval[]
+  receivedDocuments  CustodyDocument[]   @relation("ReceivedDocuments")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -47,12 +48,12 @@ model User {
 }
 
 model Organization {
-  id              String @id @default(cuid())
-  name            String
-  registrationNo  String?
-  address         String?
-  contactEmail    String
-  contactPhone    String?
+  id             String  @id @default(cuid())
+  name           String
+  registrationNo String?
+  address        String?
+  contactEmail   String
+  contactPhone   String?
 
   // Relations
   members User[]
@@ -102,35 +103,60 @@ enum FeesPaidBy {
   SPLIT
 }
 
+enum TransactionType {
+  SIMPLE // Single payment, single delivery
+  MILESTONE_BASED // Staged payments and deliveries
+}
+
+enum ServiceTier {
+  GOVERNANCE_ADVISORY // Tier 1: Coordination only, no custody
+  DOCUMENT_CUSTODY // Tier 2: + Document escrow and vault storage
+  FINANCIAL_ESCROW // Tier 3: + Financial custody and paymaster service
+}
+
 model Deal {
-  id                String     @id @default(cuid())
-  dealNumber        String     @unique // Human-readable: DEAL-2024-001
-  title             String
-  description       String?
-  status            DealStatus @default(CREATED)
+  id          String     @id @default(cuid())
+  dealNumber  String     @unique // Human-readable: DEAL-2024-001
+  title       String
+  description String?
+  status      DealStatus @default(CREATED)
+
+  // Transaction type
+  transactionType TransactionType @default(SIMPLE)
+
+  // Service tier and fees
+  serviceTier    ServiceTier @default(GOVERNANCE_ADVISORY)
+  estimatedValue Decimal?    @db.Decimal(15, 2)
+  serviceFee     Decimal?    @db.Decimal(15, 2)
 
   // Phase 1: Transaction details
-  assetType         AssetType?
-  jurisdiction      String            @default("EG")
-  currency          String            @default("EGP")
-  totalAmount       Decimal?          @db.Decimal(15, 2)
-  settlementMethod  SettlementMethod?
-  feesPaidBy        FeesPaidBy?
+  assetType        AssetType?
+  jurisdiction     String            @default("EG")
+  currency         String            @default("EGP")
+  totalAmount      Decimal?          @db.Decimal(15, 2)
+  settlementMethod SettlementMethod?
+  feesPaidBy       FeesPaidBy?
 
   // Deal-specific email inbox
-  emailAddress      String     @unique // deal-{id}@fouad.ai
+  emailAddress String @unique // deal-{id}@fouad.ai
+
+  // Party invitation tracking
+  allPartiesConfirmed Boolean @default(false)
 
   // Relations
   parties           Party[]
   contracts         Contract[]
   evidenceItems     EvidenceItem[]
   custodyRecords    CustodyRecord[]
+  custodyDocuments  CustodyDocument[]
   disputes          Dispute[]
   auditEvents       AuditEvent[]
   blockchainAnchors BlockchainAnchor[]
+  amendments        DealAmendment[]
+  deletionRequests  DealDeletionRequest[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   closedAt  DateTime?
 
   @@index([status])
@@ -144,7 +170,14 @@ enum PartyRole {
   PAYEE
   BENEFICIARY
   AGENT
+  BROKER
   OTHER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
 }
 
 enum PartyType {
@@ -167,39 +200,56 @@ enum KYCStatus {
 }
 
 model Party {
-  id             String    @id @default(cuid())
-  dealId         String
-  deal           Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  dealId String
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
 
-  role           PartyRole
-  name           String
+  role PartyRole
+  name String
 
   // Phase 1: Party type and KYC
-  partyType      PartyType  @default(INDIVIDUAL)
-  idType         IDType?
-  idNumber       String?
-  poaRequired    Boolean    @default(false)
-  kycStatus      KYCStatus  @default(NONE)
+  partyType       PartyType @default(INDIVIDUAL)
+  idType          IDType?
+  idNumber        String?
+  poaRequired     Boolean   @default(false)
+  kycStatus       KYCStatus @default(NONE)
   kycDocumentUrls String[]  @default([])
 
   // Can be individual or organization
-  isOrganization Boolean   @default(false)
+  isOrganization Boolean       @default(false)
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
 
-  contactEmail   String
-  contactPhone   String?
+  contactEmail String
+  contactPhone String?
+
+  // Party invitation system
+  invitationStatus InvitationStatus @default(PENDING)
+  invitationToken  String?          @unique
+  invitedAt        DateTime         @default(now())
+  respondedAt      DateTime?
 
   // Relations
-  members        PartyMember[]
-  acceptances    ContractAcceptance[]
-  obligations    Obligation[]
+  members            PartyMember[]
+  acceptances        ContractAcceptance[]
+  obligations        Obligation[]
   milestoneApprovals MilestoneApproval[]
+
+  // Flexible milestone system relations
+  milestonesAsPayer     Milestone[] @relation("MilestonePayer")
+  milestonesAsReceiver  Milestone[] @relation("MilestoneReceiver")
+  milestonesAsDeliverer Milestone[] @relation("MilestoneDeliverer")
+
+  // Amendment and deletion responses
+  amendmentResponses PartyAmendmentResponse[] @relation("AmendmentResponses")
+  deletionResponses  PartyDeletionResponse[]  @relation("DeletionResponses")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([dealId])
+  @@index([invitationToken])
+  @@index([invitationStatus])
 }
 
 model PartyMember {
@@ -207,8 +257,8 @@ model PartyMember {
   partyId String
   party   Party  @relation(fields: [partyId], references: [id], onDelete: Cascade)
 
-  userId  String
-  user    User   @relation(fields: [userId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
   isPrimaryContact Boolean @default(false)
 
@@ -223,27 +273,27 @@ model PartyMember {
 // ============================================================================
 
 model Contract {
-  id              String   @id @default(cuid())
-  dealId          String
-  deal            Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  dealId String
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
 
-  version         Int      // 1, 2, 3...
-  isEffective     Boolean  @default(false)
-  effectiveAt     DateTime?
+  version     Int // 1, 2, 3...
+  isEffective Boolean   @default(false)
+  effectiveAt DateTime?
 
   // Physical contract (authoritative)
-  physicalDocumentUrl String? // S3 path to signed PDF
+  physicalDocumentUrl  String? // S3 path to signed PDF
   physicalDocumentHash String? // SHA256
 
   // Structured digital twin
-  termsJson       Json // { parties, obligations, triggers, deadlines, etc. }
+  termsJson Json // { parties, obligations, triggers, deadlines, etc. }
 
   // Relations
-  milestones      Milestone[]
-  acceptances     ContractAcceptance[]
-  aiSuggestions   AISuggestion[]
+  milestones    Milestone[]
+  acceptances   ContractAcceptance[]
+  aiSuggestions AISuggestion[]
 
-  createdAt DateTime @default(now())
+  createdAt    DateTime  @default(now())
   supersededAt DateTime?
 
   @@unique([dealId, version])
@@ -255,8 +305,8 @@ model ContractAcceptance {
   contractId String
   contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
-  partyId    String
-  party      Party    @relation(fields: [partyId], references: [id])
+  partyId String
+  party   Party  @relation(fields: [partyId], references: [id])
 
   acceptedAt DateTime @default(now())
   ipAddress  String?
@@ -287,47 +337,108 @@ enum PayoutType {
   PARTIAL
 }
 
+// Flexible Milestone System
+enum MilestoneType {
+  PAYMENT // Money moves
+  PERFORMANCE // Goods/services/shares transfer
+}
+
+enum TriggerType {
+  IMMEDIATE // Starts right away
+  TIME_BASED // Triggered by time delay
+  PERFORMANCE_BASED // Triggered by previous milestone completion
+  KPI_BASED // Triggered by custom KPI conditions
+  HYBRID // Multiple conditions must be met
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  IN_KIND_ASSET
+  MIXED
+}
+
 model Milestone {
-  id          String          @id @default(cuid())
-  contractId  String
-  contract    Contract        @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
   // Phase 1: Clearer naming
-  order           Int             // Order: 1, 2, 3...
-  name            String
-  conditionText   String?
-  status          MilestoneStatus @default(PENDING)
+  order         Int // Order: 1, 2, 3...
+  name          String
+  description   String? // Renamed from conditionText for clarity
+  conditionText String? // Kept for backward compatibility
+  status        MilestoneStatus @default(PENDING)
+
+  // Flexible Milestone System: Type & Trigger
+  milestoneType MilestoneType? // PAYMENT or PERFORMANCE
+  triggerType   TriggerType? // How this milestone gets activated
+
+  // Trigger configuration (JSON flexible storage)
+  // Structure depends on triggerType:
+  // TIME_BASED: { timeDelay: { value: 30, unit: "days", afterMilestoneId: "..." }, specificDate: "..." }
+  // PERFORMANCE_BASED: { dependsOnMilestoneId: "...", requiredStatuses: ["APPROVED"], evidenceApproved: true }
+  // KPI_BASED: { metricName: "...", targetValue: "...", verifiedBy: "..." }
+  // HYBRID: { allConditions: [{type: "time", ...}, {type: "performance", ...}] }
+  triggerConfig Json?
+
+  // Payment milestone details
+  paymentMethod  PaymentMethod?
+  paymentDetails Json? // { inKindAsset: {...}, cashPortion: 5000 }
+  amount         Decimal?       @db.Decimal(15, 2) // Payment amount
+
+  // Performance milestone details (what's being delivered)
+  deliveryDetails Json? // { what: "Transfer 50% shares", quantity: 50, unit: "shares" }
+
+  // Party references for flexible transactions
+  payerPartyId String? // Who pays (for payment milestones)
+  payerParty   Party?  @relation("MilestonePayer", fields: [payerPartyId], references: [id])
+
+  receiverPartyId String? // Who receives payment (for payment milestones)
+  receiverParty   Party?  @relation("MilestoneReceiver", fields: [receiverPartyId], references: [id])
+
+  delivererPartyId String? // Who delivers (for performance milestones)
+  delivererParty   Party?  @relation("MilestoneDeliverer", fields: [delivererPartyId], references: [id])
 
   // Phase 1: Structured evidence requirements
-  requiredEvidenceTypes String[]  @default([])
+  requiredEvidenceTypes String[] @default([])
+  evidenceRequirements  Json? // Detailed evidence config: [{name, description, fileType, submittedBy, reviewedBy}]
 
-  // Compensation
-  releaseAmount  Decimal?    @db.Decimal(15, 2)
-  returnAmount   Decimal?    @db.Decimal(15, 2)
-  payoutType     PayoutType?
-  currency       String      @default("EGP")
+  // Compensation (legacy fields kept for compatibility)
+  releaseAmount Decimal?    @db.Decimal(15, 2)
+  returnAmount  Decimal?    @db.Decimal(15, 2)
+  payoutType    PayoutType?
+  currency      String      @default("EGP")
 
   // Deadlines
-  deadline       DateTime?
+  deadline        DateTime?
   gracePeriodDays Int?
 
+  // Auto-activation tracking
+  isActive    Boolean   @default(false) // Whether this milestone is currently active
+  activatedAt DateTime?
+
   // Legacy fields (kept for compatibility)
-  conditionsJson Json? // Triggers, dependencies
+  conditionsJson        Json? // Triggers, dependencies
   evidenceChecklistJson Json? // List of required evidence types
 
   // Relations
-  obligations    Obligation[]
-  evidenceItems  EvidenceItem[]
+  obligations         Obligation[]
+  evidenceItems       EvidenceItem[]
   approvalRequirement MilestoneApprovalRequirement?
-  approvals      MilestoneApproval[]
+  approvals           MilestoneApproval[]
 
-  completedAt    DateTime?
+  completedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([contractId, order])
   @@index([status])
+  @@index([isActive])
+  @@index([payerPartyId])
+  @@index([receiverPartyId])
+  @@index([delivererPartyId])
 }
 
 model Obligation {
@@ -335,11 +446,11 @@ model Obligation {
   milestoneId String
   milestone   Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
 
-  partyId     String
-  party       Party     @relation(fields: [partyId], references: [id])
+  partyId String
+  party   Party  @relation(fields: [partyId], references: [id])
 
   description String
-  isCompleted Boolean   @default(false)
+  isCompleted Boolean @default(false)
 
   createdAt   DateTime  @default(now())
   completedAt DateTime?
@@ -368,42 +479,42 @@ enum EvidenceSourceType {
 }
 
 model EvidenceItem {
-  id              String         @id @default(cuid())
-  dealId          String
-  deal            Deal           @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  dealId String
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
 
-  milestoneId     String?
-  milestone       Milestone?     @relation(fields: [milestoneId], references: [id])
+  milestoneId String?
+  milestone   Milestone? @relation(fields: [milestoneId], references: [id])
 
   // Source
-  sourceEmail     String?        // If from email
-  sourceType      EvidenceSourceType @default(UPLOAD)
+  sourceEmail String? // If from email
+  sourceType  EvidenceSourceType @default(UPLOAD)
 
   // Phase 1: Tracking
-  submittedByUserId   String?
-  submittedBy         User?      @relation("SubmittedEvidence", fields: [submittedByUserId], references: [id])
-  verifiedByUserId    String?
-  verifiedBy          User?      @relation("VerifiedEvidence", fields: [verifiedByUserId], references: [id])
-  verificationNotes   String?
+  submittedByUserId String?
+  submittedBy       User?   @relation("SubmittedEvidence", fields: [submittedByUserId], references: [id])
+  verifiedByUserId  String?
+  verifiedBy        User?   @relation("VerifiedEvidence", fields: [verifiedByUserId], references: [id])
+  verificationNotes String?
 
   // Content
-  subject         String?
-  description     String?
-  attachments     Attachment[]
+  subject     String?
+  description String?
+  attachments Attachment[]
 
-  status          EvidenceStatus @default(RECEIVED)
+  status EvidenceStatus @default(RECEIVED)
 
   // Phase 2: Quarantine
   quarantineReason String?
 
   // AI suggestion for milestone mapping
   suggestedMilestoneId String?
-  mappingConfidence    Float?     @db.Real // 0.0 - 1.0
+  mappingConfidence    Float?  @db.Real // 0.0 - 1.0
 
   // Legacy fields
-  reviewedBy      String?
-  reviewedAt      DateTime?
-  reviewNotes     String?
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  reviewNotes String?
 
   createdAt DateTime @default(now())
 
@@ -419,11 +530,11 @@ model Attachment {
   evidenceItemId String
   evidenceItem   EvidenceItem @relation(fields: [evidenceItemId], references: [id], onDelete: Cascade)
 
-  filename       String
-  mimeType       String
-  sizeBytes      Int
-  s3Key          String       // Path in S3/MinIO
-  sha256Hash     String       // Phase 1: File integrity
+  filename   String
+  mimeType   String
+  sizeBytes  Int
+  s3Key      String // Path in S3/MinIO
+  sha256Hash String // Phase 1: File integrity
 
   createdAt DateTime @default(now())
 
@@ -436,27 +547,27 @@ model Attachment {
 // ============================================================================
 
 enum CustodyStatus {
-  FUNDING_SUBMITTED   // Party submitted proof
-  FUNDING_VERIFIED    // Admin verified funds held (Phase 1: FUNDED gate)
-  RELEASE_AUTHORIZED  // Admin authorized release
-  RETURN_AUTHORIZED   // Admin authorized return
-  RELEASE_CONFIRMED   // Party confirmed release executed
-  RETURN_CONFIRMED    // Party confirmed return executed
+  FUNDING_SUBMITTED // Party submitted proof
+  FUNDING_VERIFIED // Admin verified funds held (Phase 1: FUNDED gate)
+  RELEASE_AUTHORIZED // Admin authorized release
+  RETURN_AUTHORIZED // Admin authorized return
+  RELEASE_CONFIRMED // Party confirmed release executed
+  RETURN_CONFIRMED // Party confirmed return executed
 }
 
 model CustodyRecord {
-  id          String        @id @default(cuid())
-  dealId      String
-  deal        Deal          @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  dealId String
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
 
-  amount      Decimal       @db.Decimal(15, 2)
-  currency    String        @default("EGP")
+  amount   Decimal @db.Decimal(15, 2)
+  currency String  @default("EGP")
 
-  status      CustodyStatus
+  status CustodyStatus
 
   // Funding proof (from payer)
-  fundingProofUrl String?
-  fundingProofHash String?
+  fundingProofUrl   String?
+  fundingProofHash  String?
   fundingVerifiedAt DateTime?
   fundingVerifiedBy String?
 
@@ -466,12 +577,12 @@ model CustodyRecord {
   authorizedBy     String?
 
   // Disbursement proof
-  disbursementProofUrl String?
-  disbursementProofHash String?
+  disbursementProofUrl    String?
+  disbursementProofHash   String?
   disbursementConfirmedAt DateTime?
   disbursementConfirmedBy String?
 
-  notes       String?
+  notes String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -494,18 +605,18 @@ enum DisputeStatus {
 }
 
 model Dispute {
-  id          String        @id @default(cuid())
-  dealId      String
-  deal        Deal          @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  dealId String
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
 
-  milestoneId String?       // Phase 1: Related milestone (relatedMilestoneId)
+  milestoneId String? // Phase 1: Related milestone (relatedMilestoneId)
 
-  raisedBy    String        // Party ID
-  issueType   String?       // Phase 1: Type of issue
-  reason      String        // Legacy
-  narrative   String        // Phase 1: Renamed from description
+  raisedBy  String // Party ID
+  issueType String? // Phase 1: Type of issue
+  reason    String // Legacy
+  narrative String // Phase 1: Renamed from description
 
-  status      DisputeStatus @default(OPENED)
+  status DisputeStatus @default(OPENED)
 
   // Phase 2: Milestone freeze tracking
   milestoneFrozen Boolean @default(false)
@@ -514,9 +625,9 @@ model Dispute {
   proposedResolution Json?
   finalResolution    Json?
 
-  resolvedBy  String?
-  resolvedAt  DateTime?
-  resolution  String?       // RELEASE | RETURN | PARTIAL_SPLIT
+  resolvedBy String?
+  resolvedAt DateTime?
+  resolution String? // RELEASE | RETURN | PARTIAL_SPLIT
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -546,26 +657,26 @@ enum SuggestionStatus {
 }
 
 model AISuggestion {
-  id          String           @id @default(cuid())
-  dealId      String?
-  contractId  String?
-  contract    Contract?        @relation(fields: [contractId], references: [id])
+  id         String    @id @default(cuid())
+  dealId     String?
+  contractId String?
+  contract   Contract? @relation(fields: [contractId], references: [id])
 
-  type        SuggestionType
-  status      SuggestionStatus @default(PENDING)
+  type   SuggestionType
+  status SuggestionStatus @default(PENDING)
 
   // AI output
   suggestedJson Json
-  confidence    Float            @db.Real
+  confidence    Float  @db.Real
   modelVersion  String
 
   // Human review
-  reviewedBy    String?
-  reviewedByUser User?           @relation(fields: [reviewedBy], references: [id])
-  reviewedAt    DateTime?
+  reviewedBy     String?
+  reviewedByUser User?     @relation(fields: [reviewedBy], references: [id])
+  reviewedAt     DateTime?
 
   // Final version (if modified)
-  finalJson     Json?
+  finalJson Json?
 
   createdAt DateTime @default(now())
 
@@ -584,29 +695,29 @@ model AISuggestion {
 // RELEASE_INSTRUCTION_ISSUED, DISPUTE_RAISED, CASE_COMPLETED
 
 model AuditEvent {
-  id          String   @id @default(cuid())
-  dealId      String?
-  deal        Deal?    @relation(fields: [dealId], references: [id])
+  id     String  @id @default(cuid())
+  dealId String?
+  deal   Deal?   @relation(fields: [dealId], references: [id])
 
-  eventType   String   // Phase 1: Standardized event types
-  actor       String   // User ID
-  actorUser   User?    @relation(fields: [actor], references: [id])
+  eventType String // Phase 1: Standardized event types
+  actor     String // User ID
+  actorUser User?  @relation(fields: [actor], references: [id])
 
   // State transition
-  entityType  String   // Deal, Contract, Milestone, CustodyRecord, etc.
-  entityId    String
+  entityType String // Deal, Contract, Milestone, CustodyRecord, etc.
+  entityId   String
 
-  oldState    Json?
-  newState    Json?
+  oldState Json?
+  newState Json?
 
   // Payload hash for integrity
   payloadHash String
 
-  metadata    Json?    // Additional context
-  ipAddress   String?
-  userAgent   String?
+  metadata  Json? // Additional context
+  ipAddress String?
+  userAgent String?
 
-  timestamp   DateTime @default(now())
+  timestamp DateTime @default(now())
 
   @@index([dealId])
   @@index([entityType, entityId])
@@ -626,16 +737,16 @@ enum AnchorStatus {
 }
 
 model BlockchainAnchor {
-  id          String       @id @default(cuid())
-  dealId      String
-  deal        Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  dealId String
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
 
-  eventType   String       // contract_effective, funding_verified, milestone_accepted, etc.
-  eventId     String       // Reference to specific event
+  eventType String // contract_effective, funding_verified, milestone_accepted, etc.
+  eventId   String // Reference to specific event
 
   // Hash only (no PII)
-  dataHash    String       // SHA256 of event data
-  metadata    Json         // {dealId, eventType, timestamp, version}
+  dataHash String // SHA256 of event data
+  metadata Json // {dealId, eventType, timestamp, version}
 
   // Blockchain details
   status      AnchorStatus @default(PENDING)
@@ -643,8 +754,8 @@ model BlockchainAnchor {
   blockNumber Int?
   network     String       @default("sepolia")
 
-  submittedAt DateTime?
-  confirmedAt DateTime?
+  submittedAt   DateTime?
+  confirmedAt   DateTime?
   failureReason String?
 
   createdAt DateTime @default(now())
@@ -659,22 +770,22 @@ model BlockchainAnchor {
 // ============================================================================
 
 model DealDraft {
-  id                String   @id @default(cuid())
-  userId            String
+  id     String @id @default(cuid())
+  userId String
 
   // Wizard progress
-  currentStep       Int      @default(1)
+  currentStep Int @default(1)
 
   // Step data (JSON for flexibility)
-  step1Data         Json?    // Basics: title, assetType, description, myRole
-  step2Data         Json?    // Parties: array of party objects
-  step3Data         Json?    // Amount & fees: totalAmount, currency, settlementMethod, feesPaidBy
-  step4Data         Json?    // Milestones: array of milestone objects
-  step5Data         Json?    // Documents: contract files, signing mode
+  step1Data Json? // Basics: title, assetType, description, myRole
+  step2Data Json? // Parties: array of party objects
+  step3Data Json? // Amount & fees: totalAmount, currency, settlementMethod, feesPaidBy
+  step4Data Json? // Milestones: array of milestone objects
+  step5Data Json? // Documents: contract files, signing mode
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  expiresAt         DateTime // Auto-delete after 7 days
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt DateTime // Auto-delete after 7 days
 
   @@index([userId])
   @@index([expiresAt])
@@ -685,36 +796,273 @@ model DealDraft {
 // ============================================================================
 
 model MilestoneApprovalRequirement {
-  id                String    @id @default(cuid())
-  milestoneId       String
-  milestone         Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  id          String    @id @default(cuid())
+  milestoneId String
+  milestone   Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
 
   // Flags for who must approve
-  requireAdminApproval   Boolean @default(true)
-  requireBuyerApproval   Boolean @default(false)
-  requireSellerApproval  Boolean @default(false)
+  requireAdminApproval  Boolean @default(true)
+  requireBuyerApproval  Boolean @default(false)
+  requireSellerApproval Boolean @default(false)
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([milestoneId])
 }
 
 model MilestoneApproval {
-  id            String    @id @default(cuid())
-  milestoneId   String
-  milestone     Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  id          String    @id @default(cuid())
+  milestoneId String
+  milestone   Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
 
-  userId        String
-  user          User      @relation(fields: [userId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
-  partyId       String?
-  party         Party?    @relation(fields: [partyId], references: [id])
+  partyId String?
+  party   Party?  @relation(fields: [partyId], references: [id])
 
   approvalNotes String?
 
-  createdAt     DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([milestoneId, userId])
   @@index([milestoneId])
+}
+
+// ============================================================================
+// DEAL AMENDMENT & DELETION SYSTEM
+// ============================================================================
+
+enum AmendmentStatus {
+  PENDING // Awaiting party responses
+  APPROVED // All parties approved
+  DISPUTED // At least one party disputed
+  APPLIED // Changes have been applied
+  REJECTED // Admin rejected the amendment
+}
+
+enum DeletionStatus {
+  PENDING // Awaiting party responses
+  APPROVED // All parties approved
+  EXECUTED // Deal has been deleted
+  DISPUTED // At least one party disputed
+  REJECTED // Admin rejected the deletion
+}
+
+enum PartyResponseType {
+  APPROVE
+  DISPUTE
+}
+
+// Deal Amendment Proposals (Phase 2: Post-agreement changes)
+model DealAmendment {
+  id     String @id @default(cuid())
+  dealId String
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  proposedBy     String // User ID who proposed
+  proposedByName String // Name for display
+
+  // What changes are being proposed (JSON)
+  // Example: { title: "New Title", totalAmount: 15000, description: "Updated..." }
+  proposedChanges Json
+
+  status AmendmentStatus @default(PENDING)
+
+  // Party responses
+  responses PartyAmendmentResponse[]
+
+  // Admin resolution (if disputed)
+  resolvedBy      String?
+  resolvedAt      DateTime?
+  resolutionNotes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dealId])
+  @@index([status])
+}
+
+// Party responses to amendment proposals
+model PartyAmendmentResponse {
+  id          String        @id @default(cuid())
+  amendmentId String
+  amendment   DealAmendment @relation(fields: [amendmentId], references: [id], onDelete: Cascade)
+
+  partyId String
+  party   Party  @relation("AmendmentResponses", fields: [partyId], references: [id])
+
+  responseType PartyResponseType // APPROVE or DISPUTE
+  notes        String? // Optional notes explaining the response
+
+  respondedAt DateTime @default(now())
+
+  @@unique([amendmentId, partyId])
+  @@index([amendmentId])
+  @@index([partyId])
+}
+
+// Deal Deletion Requests (Phase 2: Post-agreement deletion)
+model DealDeletionRequest {
+  id     String @id @default(cuid())
+  dealId String
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  requestedBy     String // User ID who requested
+  requestedByName String // Name for display
+  reason          String // Why the deal should be deleted
+
+  status DeletionStatus @default(PENDING)
+
+  // Party responses
+  responses PartyDeletionResponse[]
+
+  // Admin resolution (if disputed)
+  resolvedBy      String?
+  resolvedAt      DateTime?
+  resolutionNotes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dealId])
+  @@index([status])
+}
+
+// Party responses to deletion requests
+model PartyDeletionResponse {
+  id                String              @id @default(cuid())
+  deletionRequestId String
+  deletionRequest   DealDeletionRequest @relation(fields: [deletionRequestId], references: [id], onDelete: Cascade)
+
+  partyId String
+  party   Party  @relation("DeletionResponses", fields: [partyId], references: [id])
+
+  responseType PartyResponseType // APPROVE or DISPUTE
+  notes        String? // Optional notes explaining the response
+
+  respondedAt DateTime @default(now())
+
+  @@unique([deletionRequestId, partyId])
+  @@index([deletionRequestId])
+  @@index([partyId])
+}
+
+// ============================================================================
+// DOCUMENT CUSTODY SYSTEM (Tier 2)
+// ============================================================================
+
+enum DeliveryMethod {
+  COURIER
+  HAND_DELIVERY
+  REGISTERED_MAIL
+}
+
+enum CustodyDocumentType {
+  TITLE_DEED
+  STOCK_CERTIFICATE
+  POWER_OF_ATTORNEY
+  VEHICLE_REGISTRATION
+  PROPERTY_REGISTRATION
+  CONTRACT_ORIGINAL
+  PASSPORT
+  IDENTITY_DOCUMENT
+  OTHER
+}
+
+enum CustodyDocumentStatus {
+  PENDING_DELIVERY
+  IN_TRANSIT
+  DELIVERY_REFUSED
+  RECEIVED_IN_OFFICE
+  IN_CUSTODY
+  PENDING_RELEASE
+  RELEASED
+  RETURNED
+}
+
+// Company settings for document delivery
+model CompanySettings {
+  id String @id @default(cuid())
+
+  // Physical office address for document delivery
+  officeAddress      String  @default("45 Narges 3, New Cairo, Cairo, Egypt")
+  officeAddressLine2 String?
+  city               String  @default("Cairo")
+  country            String  @default("Egypt")
+  postalCode         String?
+
+  // Office contact
+  officePhone String?
+  officeEmail String?
+  officeHours String? @default("Sunday-Thursday, 9 AM - 5 PM")
+
+  // Authorized document receivers (names of people who can receive documents)
+  authorizedReceivers String[] @default([])
+
+  updatedAt DateTime @updatedAt
+  updatedBy String // User ID who last updated
+
+  createdAt DateTime @default(now())
+}
+
+// Physical document custody tracking
+model CustodyDocument {
+  id     String @id @default(cuid())
+  dealId String
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  documentType CustodyDocumentType
+  description  String
+
+  // Physical delivery tracking
+  deliveryMethod       DeliveryMethod
+  deliveryInstructions String?
+  expectedDeliveryDate DateTime?
+
+  courierService String? // e.g., "Aramex", "DHL", "Hand Delivery"
+  trackingNumber String?
+
+  // Authorized receiver (specific person who can receive)
+  authorizedReceiverName String
+  actualReceiverName     String? // Who actually received it
+  receivedByUserId       String? // DealGuard admin who logged receipt
+  receivedByUser         User?   @relation("ReceivedDocuments", fields: [receivedByUserId], references: [id])
+
+  originalReceived Boolean   @default(false)
+  receivedDate     DateTime?
+  receiptPhotoUrl  String? // Photo of received document
+
+  vaultLocation String? // Physical vault location
+
+  // Digital twin (scanned copy)
+  digitalTwinUrl  String? // S3 URL
+  digitalTwinHash String? // SHA-256
+
+  // Insurance details
+  insuranceValue        Decimal? @db.Decimal(15, 2)
+  insurancePolicyNumber String?
+
+  // Release tracking
+  releaseAuthorizedBy String[]  @default([]) // Array of user IDs
+  releaseAuthorizedAt DateTime?
+  releasedTo          String?
+  releasedAt          DateTime?
+
+  // Refusal tracking
+  refusalReason String?
+  refusalNotes  String?
+  refusedAt     DateTime?
+  refusedBy     String? // User ID who refused delivery
+
+  status CustodyDocumentStatus @default(PENDING_DELIVERY)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dealId])
+  @@index([status])
+  @@index([trackingNumber])
 }

@@ -1,0 +1,7 @@
+-- CreateEnum
+CREATE TYPE "ServiceTier" AS ENUM ('GOVERNANCE_ADVISORY', 'DOCUMENT_CUSTODY', 'FINANCIAL_ESCROW');
+
+-- AlterTable
+ALTER TABLE "Deal" ADD COLUMN     "serviceTier" "ServiceTier" NOT NULL DEFAULT 'GOVERNANCE_ADVISORY',
+ADD COLUMN     "estimatedValue" DECIMAL(15,2),
+ADD COLUMN     "serviceFee" DECIMAL(15,2);
