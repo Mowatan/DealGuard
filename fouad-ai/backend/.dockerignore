@@ -1,0 +1,16 @@
+node_modules
+npm-debug.log
+.env
+.env.local
+.env.production
+dist
+coverage
+*.log
+.git
+.gitignore
+README.md
+.vscode
+.idea
+*.swp
+*.swo
+*~
