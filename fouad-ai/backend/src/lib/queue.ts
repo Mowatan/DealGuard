@@ -9,6 +9,7 @@ const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', 
 export const emailProcessingQueue = new Queue('email-processing', { connection });
 export const blockchainAnchorQueue = new Queue('blockchain-anchor', { connection });
 export const aiSuggestionQueue = new Queue('ai-suggestion', { connection });
+export const emailSendingQueue = new Queue('email-sending', { connection });
 
 // Email processing worker
 export const emailWorker = new Worker(
@@ -47,20 +48,58 @@ export const aiWorker = new Worker(
   async (job: Job) => {
     const { type, data } = job.data;
     console.log(`Generating AI suggestion: ${type}`);
-    
+
     const { generateAISuggestion } = await import('../modules/ai/ai.service');
     await generateAISuggestion(type, data);
-    
+
     return { success: true };
   },
   { connection }
 );
+
+// Email sending worker
+export const emailSendingWorker = new Worker(
+  'email-sending',
+  async (job: Job) => {
+    const { to, subject, template, variables, dealId } = job.data;
+    console.log(`Sending email: ${template} to ${Array.isArray(to) ? to.join(', ') : to}`);
+
+    const { emailService } = await import('./email.service');
+    const result = await emailService.sendEmail({
+      to,
+      subject,
+      template,
+      variables,
+      dealId,
+    });
+
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to send email');
+    }
+
+    return { success: true, messageId: result.messageId };
+  },
+  {
+    connection,
+    concurrency: 5, // Process 5 emails concurrently
+    limiter: {
+      max: 5, // Max 5 jobs
+      duration: 1000, // Per second (rate limiting)
+    },
+  }
+);
+
+// Configure retry settings for email sending
+emailSendingQueue.on('error', (error) => {
+  console.error('Email sending queue error:', error);
+});
 
 // Graceful shutdown
 export async function shutdownQueues() {
   await emailWorker.close();
   await blockchainWorker.close();
   await aiWorker.close();
+  await emailSendingWorker.close();
   await connection.quit();
 }
 

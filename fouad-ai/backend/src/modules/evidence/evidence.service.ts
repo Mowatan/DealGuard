@@ -1,7 +1,7 @@
 import { prisma } from '../../lib/prisma';
 import { storage } from '../../lib/storage';
 import { createAuditLog } from '../../lib/audit';
-import { aiSuggestionQueue } from '../../lib/queue';
+import { aiSuggestionQueue, emailSendingQueue } from '../../lib/queue';
 import { EvidenceStatus } from '@prisma/client';
 
 interface CreateEvidenceParams {
@@ -67,6 +67,37 @@ export async function createEvidence(params: CreateEvidenceParams) {
     },
   });
 
+  // Send confirmation email to submitter
+  if (params.sourceEmail) {
+    const deal = await prisma.deal.findUnique({
+      where: { id: params.dealId },
+      select: { dealNumber: true, title: true, emailAddress: true },
+    });
+
+    if (deal) {
+      await emailSendingQueue.add(
+        'send-evidence-received',
+        {
+          to: params.sourceEmail,
+          subject: `Evidence Received: Deal ${deal.dealNumber}`,
+          template: 'evidence-received',
+          variables: {
+            dealNumber: deal.dealNumber,
+            dealTitle: deal.title,
+            evidenceSubject: params.subject || 'No subject',
+            submittedAt: new Date().toLocaleString(),
+            attachmentCount: attachments.length,
+            submissionMethod: params.sourceType,
+            dealEmailAddress: deal.emailAddress,
+          },
+          dealId: params.dealId,
+          priority: 6,
+        },
+        { priority: 6 }
+      );
+    }
+  }
+
   // Request AI mapping suggestion if milestone not specified
   if (!params.milestoneId) {
     await requestMappingSuggestion(evidence.id);
@@ -86,7 +117,7 @@ export async function listEvidenceByDeal(dealId: string, status?: EvidenceStatus
       milestone: {
         select: {
           id: true,
-          title: true,
+          name: true,
           order: true,
         },
       },
@@ -126,6 +157,15 @@ export async function reviewEvidence(
       reviewedBy,
       reviewedAt: new Date(),
     },
+    include: {
+      deal: {
+        select: {
+          id: true,
+          dealNumber: true,
+          title: true,
+        },
+      },
+    },
   });
 
   // Create audit log
@@ -141,6 +181,45 @@ export async function reviewEvidence(
     },
     metadata: { reviewNotes },
   });
+
+  // Send notification to submitter if sourceEmail exists
+  if (evidence.sourceEmail) {
+    const isAccepted = status === EvidenceStatus.ACCEPTED;
+    const statusBox = isAccepted
+      ? '<div class="success-box"><h3>✓ Evidence Accepted</h3></div>'
+      : '<div class="alert-box"><h3>✗ Evidence Rejected</h3></div>';
+
+    const reviewNotesSection = reviewNotes
+      ? `<div class="info-box"><h3>Reviewer Notes</h3><p>${reviewNotes}</p></div>`
+      : '';
+
+    const statusMessage = isAccepted
+      ? 'Your evidence has been accepted and is now part of the official deal record. This evidence may be used for milestone approvals and dispute resolution.'
+      : 'Your evidence submission was rejected. Please review the notes above and resubmit with the requested corrections or clarifications.';
+
+    await emailSendingQueue.add(
+      'send-evidence-reviewed',
+      {
+        to: evidence.sourceEmail,
+        subject: `Evidence ${isAccepted ? 'Accepted' : 'Rejected'}: Deal ${evidence.deal.dealNumber}`,
+        template: 'evidence-reviewed',
+        variables: {
+          dealNumber: evidence.deal.dealNumber,
+          dealTitle: evidence.deal.title,
+          evidenceSubject: evidence.subject || 'No subject',
+          status: status,
+          reviewedBy: reviewedBy,
+          reviewedAt: new Date().toLocaleString(),
+          statusBox: statusBox,
+          reviewNotesSection: reviewNotesSection,
+          statusMessage: statusMessage,
+        },
+        dealId: evidence.dealId,
+        priority: 6,
+      },
+      { priority: 6 }
+    );
+  }
 
   // Phase 2: If evidence is ACCEPTED and mapped to a milestone, evaluate milestone readiness
   if (status === EvidenceStatus.ACCEPTED && milestoneId) {
@@ -302,6 +381,50 @@ async function quarantineEvidence(
       quarantineReason: reason,
     },
   });
+
+  // Send alert to admins
+  const admins = await prisma.user.findMany({
+    where: {
+      role: {
+        in: ['ADMIN', 'SUPER_ADMIN'],
+      },
+    },
+    select: {
+      email: true,
+    },
+  });
+
+  const deal = await prisma.deal.findUnique({
+    where: { id: dealId },
+    select: { dealNumber: true, title: true },
+  });
+
+  if (admins.length > 0 && deal) {
+    const adminEmails = admins.map(admin => admin.email);
+
+    for (const email of adminEmails) {
+      await emailSendingQueue.add(
+        'send-evidence-quarantined',
+        {
+          to: email,
+          subject: `🚨 Security Alert: Evidence Quarantined - Deal ${deal.dealNumber}`,
+          template: 'evidence-quarantined',
+          variables: {
+            dealNumber: deal.dealNumber,
+            dealTitle: deal.title,
+            senderEmail: emailData.from,
+            evidenceSubject: emailData.subject,
+            quarantinedAt: new Date().toLocaleString(),
+            attachmentCount: attachments.length,
+            quarantineReason: reason,
+          },
+          dealId: dealId,
+          priority: 8,
+        },
+        { priority: 8 }
+      );
+    }
+  }
 
   return { ...evidence, attachments };
 }
