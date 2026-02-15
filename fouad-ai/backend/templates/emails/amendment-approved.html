@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Amendment Approved</title>
+  <style>
+    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #333333; background-color: #f4f4f4; }
+    .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+    .email-header { background-color: #1a202c; padding: 30px 20px; text-align: center; }
+    .email-header h1 { margin: 0; font-size: 28px; font-weight: 700; color: #ffffff; }
+    .email-header .tagline { margin: 5px 0 0 0; font-size: 14px; color: #a0aec0; }
+    .email-content { padding: 40px 30px; }
+    .email-content h2 { margin: 0 0 20px 0; font-size: 22px; font-weight: 600; color: #1a202c; }
+    .email-content p { margin: 0 0 16px 0; color: #4a5568; }
+    .success-box { background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 20px; margin: 24px 0; }
+    .success-box h3 { margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: #047857; }
+    .details-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    .details-table td { padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+    .details-table td:first-child { font-weight: 600; color: #2d3748; width: 40%; }
+    .details-table td:last-child { color: #4a5568; }
+    .details-table tr:last-child td { border-bottom: none; }
+    .button { display: inline-block; padding: 14px 28px; background-color: #4299e1; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px; margin: 20px 0; }
+    .button:hover { background-color: #3182ce; }
+    .email-footer { background-color: #f7fafc; padding: 30px 20px; text-align: center; border-top: 1px solid #e2e8f0; }
+    .email-footer p { margin: 0 0 8px 0; font-size: 13px; color: #718096; }
+    @media only screen and (max-width: 600px) {
+      .email-content { padding: 30px 20px !important; }
+      .details-table td { display: block; width: 100% !important; padding: 5px 10px !important; }
+    }
+  </style>
+</head>
+<body>
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+    <tr>
+      <td style="padding: 20px 0;">
+        <table role="presentation" class="email-container" cellspacing="0" cellpadding="0" border="0" align="center" width="600">
+          <tr>
+            <td class="email-header">
+              <h1>DealGuard</h1>
+              <p class="tagline">Blockchain-Anchored Deal Management</p>
+            </td>
+          </tr>
+          <tr>
+            <td class="email-content">
+              <div class="success-box">
+                <h3>✓ Amendment Approved & Applied</h3>
+              </div>
+
+              <h2>Deal {{dealNumber}} Has Been Updated</h2>
+
+              <p>Hi {{partyName}},</p>
+
+              <p>All parties have approved the proposed amendment to <strong>{{dealTitle}}</strong>. The changes have been applied successfully.</p>
+
+              <h3 style="margin: 24px 0 12px 0; font-size: 18px; color: #2d3748;">Applied Changes:</h3>
+
+              <table class="details-table">
+                {{#if changes.title}}
+                <tr>
+                  <td>New Title:</td>
+                  <td>{{changes.title}}</td>
+                </tr>
+                {{/if}}
+                {{#if changes.description}}
+                <tr>
+                  <td>New Description:</td>
+                  <td>{{changes.description}}</td>
+                </tr>
+                {{/if}}
+                {{#if changes.totalAmount}}
+                <tr>
+                  <td>New Total Amount:</td>
+                  <td>{{changes.totalAmount}} {{changes.currency}}</td>
+                </tr>
+                {{/if}}
+              </table>
+
+              <p>The deal will continue with these updated terms.</p>
+
+              <center>
+                <a href="{{dealLink}}" class="button">View Updated Deal</a>
+              </center>
+            </td>
+          </tr>
+          <tr>
+            <td class="email-footer">
+              <p><strong>DealGuard</strong> - Secure Deal Management Platform</p>
+              <p>This is an automated notification. Please do not reply to this email.</p>
+              <p>&copy; 2025 DealGuard. All rights reserved.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

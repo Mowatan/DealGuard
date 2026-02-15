@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Custody Release Authorized</title>
+  <style>
+    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #333333; background-color: #f4f4f4; }
+    .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+    .email-header { background-color: #1a202c; padding: 30px 20px; text-align: center; }
+    .email-header h1 { margin: 0; font-size: 28px; font-weight: 700; color: #ffffff; }
+    .email-header .tagline { margin: 5px 0 0 0; font-size: 14px; color: #a0aec0; }
+    .email-content { padding: 40px 30px; }
+    .email-content h2 { margin: 0 0 20px 0; font-size: 22px; font-weight: 600; color: #1a202c; }
+    .email-content p { margin: 0 0 16px 0; color: #4a5568; }
+    .alert-box { background-color: #fef5e7; border-left: 4px solid #f39c12; padding: 20px; margin: 24px 0; }
+    .alert-box h3 { margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: #d68910; }
+    .alert-box p { margin: 0 0 8px 0; font-size: 14px; }
+    .details-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    .details-table td { padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+    .details-table td:first-child { font-weight: 600; color: #2d3748; width: 40%; }
+    .details-table td:last-child { color: #4a5568; }
+    .details-table tr:last-child td { border-bottom: none; }
+    .info-box { background-color: #f7fafc; border-left: 4px solid #4299e1; padding: 20px; margin: 24px 0; }
+    .info-box h3 { margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: #2d3748; }
+    .info-box p { margin: 0 0 8px 0; font-size: 14px; }
+    .email-footer { background-color: #f7fafc; padding: 30px 20px; text-align: center; border-top: 1px solid #e2e8f0; }
+    .email-footer p { margin: 0 0 8px 0; font-size: 13px; color: #718096; }
+    @media only screen and (max-width: 600px) {
+      .email-content { padding: 30px 20px !important; }
+      .details-table td { display: block; width: 100% !important; padding: 5px 10px !important; }
+    }
+  </style>
+</head>
+<body>
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+    <tr>
+      <td style="padding: 20px 0;">
+        <table role="presentation" class="email-container" cellspacing="0" cellpadding="0" border="0" align="center" width="600">
+          <tr>
+            <td class="email-header">
+              <h1>DealGuard</h1>
+              <p class="tagline">Blockchain-Anchored Deal Management</p>
+            </td>
+          </tr>
+          <tr>
+            <td class="email-content">
+              <div class="alert-box">
+                <h3>⚠ Action Required: Fund {{action}}</h3>
+              </div>
+
+              <h2>Custody Action Authorized</h2>
+
+              <p>An authorized party has requested to <strong>{{action}}</strong> funds for Deal {{dealNumber}}. As the custodian, you need to process this request.</p>
+
+              <table class="details-table">
+                <tr>
+                  <td>Deal Number:</td>
+                  <td><strong>{{dealNumber}}</strong></td>
+                </tr>
+                <tr>
+                  <td>Deal Title:</td>
+                  <td>{{dealTitle}}</td>
+                </tr>
+                <tr>
+                  <td>Action:</td>
+                  <td><strong style="text-transform: uppercase;">{{action}}</strong></td>
+                </tr>
+                <tr>
+                  <td>Amount:</td>
+                  <td><strong>{{amount}} {{currency}}</strong></td>
+                </tr>
+                <tr>
+                  <td>Authorized By:</td>
+                  <td>{{authorizedBy}}</td>
+                </tr>
+                <tr>
+                  <td>Authorized Date:</td>
+                  <td>{{authorizedAt}}</td>
+                </tr>
+                <tr>
+                  <td>Recipient:</td>
+                  <td>{{recipientParty}}</td>
+                </tr>
+                <tr>
+                  <td>Blockchain Hash:</td>
+                  <td style="font-family: monospace; font-size: 12px; word-break: break-all;">{{blockchainHash}}</td>
+                </tr>
+              </table>
+
+              <div class="info-box">
+                <h3>Required Action</h3>
+                <p><strong>Step 1:</strong> Verify the authorization details above</p>
+                <p><strong>Step 2:</strong> Process the {{action}} according to deal terms</p>
+                <p><strong>Step 3:</strong> Submit disbursement proof through the DealGuard portal</p>
+              </div>
+
+              <p><strong>Important:</strong> This authorization has been anchored to the blockchain for immutable proof and audit trail.</p>
+
+              <p style="margin-top: 24px;">Please process this request promptly and submit proof of disbursement once completed.</p>
+            </td>
+          </tr>
+          <tr>
+            <td class="email-footer">
+              <p><strong>DealGuard</strong> - Secure Deal Management Platform</p>
+              <p>This is an automated notification. Please do not reply to this email.</p>
+              <p>&copy; 2025 DealGuard. All rights reserved.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

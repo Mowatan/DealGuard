@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Milestone Approved</title>
+  <style>
+    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #333333; background-color: #f4f4f4; }
+    .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+    .email-header { background-color: #1a202c; padding: 30px 20px; text-align: center; }
+    .email-header h1 { margin: 0; font-size: 28px; font-weight: 700; color: #ffffff; }
+    .email-header .tagline { margin: 5px 0 0 0; font-size: 14px; color: #a0aec0; }
+    .email-content { padding: 40px 30px; }
+    .email-content h2 { margin: 0 0 20px 0; font-size: 22px; font-weight: 600; color: #1a202c; }
+    .email-content p { margin: 0 0 16px 0; color: #4a5568; }
+    .success-box { background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 20px; margin: 24px 0; }
+    .success-box h3 { margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: #047857; }
+    .details-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    .details-table td { padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+    .details-table td:first-child { font-weight: 600; color: #2d3748; width: 40%; }
+    .details-table td:last-child { color: #4a5568; }
+    .details-table tr:last-child td { border-bottom: none; }
+    .info-box { background-color: #f7fafc; border-left: 4px solid #4299e1; padding: 20px; margin: 24px 0; }
+    .info-box h3 { margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: #2d3748; }
+    .info-box p { margin: 0 0 8px 0; font-size: 14px; }
+    .progress-bar { width: 100%; height: 30px; background-color: #e2e8f0; border-radius: 15px; overflow: hidden; margin: 16px 0; }
+    .progress-fill { height: 100%; background-color: #10b981; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px; }
+    .email-footer { background-color: #f7fafc; padding: 30px 20px; text-align: center; border-top: 1px solid #e2e8f0; }
+    .email-footer p { margin: 0 0 8px 0; font-size: 13px; color: #718096; }
+    @media only screen and (max-width: 600px) {
+      .email-content { padding: 30px 20px !important; }
+      .details-table td { display: block; width: 100% !important; padding: 5px 10px !important; }
+    }
+  </style>
+</head>
+<body>
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+    <tr>
+      <td style="padding: 20px 0;">
+        <table role="presentation" class="email-container" cellspacing="0" cellpadding="0" border="0" align="center" width="600">
+          <tr>
+            <td class="email-header">
+              <h1>DealGuard</h1>
+              <p class="tagline">Blockchain-Anchored Deal Management</p>
+            </td>
+          </tr>
+          <tr>
+            <td class="email-content">
+              <div class="success-box">
+                <h3>✓ Milestone Approved</h3>
+              </div>
+
+              <h2>Milestone {{milestoneOrder}}: {{milestoneTitle}}</h2>
+
+              <p>A milestone for Deal {{dealNumber}} has been approved and marked as complete.</p>
+
+              <table class="details-table">
+                <tr>
+                  <td>Deal Number:</td>
+                  <td><strong>{{dealNumber}}</strong></td>
+                </tr>
+                <tr>
+                  <td>Deal Title:</td>
+                  <td>{{dealTitle}}</td>
+                </tr>
+                <tr>
+                  <td>Milestone:</td>
+                  <td><strong>{{milestoneTitle}}</strong></td>
+                </tr>
+                <tr>
+                  <td>Milestone Number:</td>
+                  <td>{{milestoneOrder}} of {{totalMilestones}}</td>
+                </tr>
+                <tr>
+                  <td>Approved By:</td>
+                  <td>{{approvedBy}}</td>
+                </tr>
+                <tr>
+                  <td>Approved Date:</td>
+                  <td>{{approvedAt}}</td>
+                </tr>
+              </table>
+
+              <div class="info-box">
+                <h3>Deal Progress</h3>
+                <p>Milestones completed: <strong>{{completedMilestones}} of {{totalMilestones}}</strong></p>
+                <div class="progress-bar">
+                  <div class="progress-fill" style="width: {{progressPercentage}}%;">
+                    {{progressPercentage}}%
+                  </div>
+                </div>
+              </div>
+
+              {{nextStepsSection}}
+
+              <p style="margin-top: 24px;">You can view detailed milestone information and evidence by logging into the DealGuard platform.</p>
+            </td>
+          </tr>
+          <tr>
+            <td class="email-footer">
+              <p><strong>DealGuard</strong> - Secure Deal Management Platform</p>
+              <p>This is an automated notification. Please do not reply to this email.</p>
+              <p>&copy; 2025 DealGuard. All rights reserved.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
