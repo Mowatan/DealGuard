@@ -7,6 +7,7 @@ import { UserRole } from '@prisma/client';
 const ROLE_HIERARCHY: Record<UserRole, number> = {
   PARTY_USER: 1,
   CASE_OFFICER: 2,
+  ESCROW_OFFICER: 2,
   ADMIN: 3,
   SUPER_ADMIN: 4,
 };
