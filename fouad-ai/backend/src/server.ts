@@ -19,11 +19,8 @@ import { progressRoutes } from './modules/progress/progress.routes';
 config();
 
 const server = Fastify({
-  logger: process.env.NODE_ENV === 'production'
+  logger: process.env.NODE_ENV === 'development'
     ? {
-        level: process.env.LOG_LEVEL || 'info',
-      }
-    : {
         level: process.env.LOG_LEVEL || 'info',
         transport: {
           target: 'pino-pretty',
@@ -32,6 +29,9 @@ const server = Fastify({
             ignore: 'pid,hostname',
           },
         },
+      }
+    : {
+        level: process.env.LOG_LEVEL || 'info',
       },
 });
 
