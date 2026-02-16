@@ -1,6 +1,10 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "fouad-ai/backend/Dockerfile"
+dockerfilePath = "Dockerfile"
+watchPatterns = ["fouad-ai/backend/**"]
+
+[[build.buildCommand]]
+workDir = "fouad-ai/backend"
 
 [deploy]
 healthcheckPath = "/health"
