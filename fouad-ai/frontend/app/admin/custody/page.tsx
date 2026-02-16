@@ -50,7 +50,7 @@ export default function CustodyPage() {
       const token = await getToken();
 
       // Get all deals
-      const dealsData = await dealsApi.list({ limit: 100 }, token);
+      const dealsData = await dealsApi.list({ limit: 100, token });
       const deals = dealsData.deals || [];
 
       // Fetch custody records for each deal
