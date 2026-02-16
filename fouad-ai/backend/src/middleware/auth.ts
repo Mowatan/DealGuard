@@ -185,13 +185,44 @@ export async function authenticate(
     // Verify Clerk token
     let clerkPayload;
     try {
+      // Validate that Clerk keys are configured
+      if (!process.env.CLERK_SECRET_KEY) {
+        request.log.error('CLERK_SECRET_KEY not configured');
+        return reply.code(500).send({
+          error: 'Configuration Error',
+          message: 'Authentication service not configured',
+        });
+      }
+
+      // Log Clerk configuration (without exposing full key)
+      request.log.debug({
+        hasSecretKey: !!process.env.CLERK_SECRET_KEY,
+        secretKeyPrefix: process.env.CLERK_SECRET_KEY?.substring(0, 10),
+      }, 'Verifying Clerk token');
+
       clerkPayload = await verifyClerkToken(token, {
         secretKey: process.env.CLERK_SECRET_KEY,
+        // Adding publishableKey can help with JWK resolution
+        ...(process.env.CLERK_PUBLISHABLE_KEY && {
+          publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
+        }),
       });
     } catch (error) {
+      // Enhanced error logging for debugging JWK issues
+      const errorMessage = error instanceof Error ? error.message : 'Invalid token';
+      const errorName = error instanceof Error ? error.name : 'Unknown';
+
+      request.log.warn({
+        error: errorMessage,
+        errorName,
+        tokenPrefix: token.substring(0, 20) + '...',
+      }, 'Clerk token verification failed');
+
       return reply.code(401).send({
         error: 'Unauthorized',
-        message: error instanceof Error ? error.message : 'Invalid token',
+        message: errorMessage.includes('JWK')
+          ? 'Token verification failed. Please sign in again.'
+          : errorMessage,
       });
     }
 
