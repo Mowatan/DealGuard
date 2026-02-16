@@ -89,6 +89,7 @@ async function fetchApi<T>(
     const response = await fetch(url, {
       ...fetchOptions,
       headers,
+      credentials: 'include', // Important for CORS with cookies/auth
     });
 
     console.log(`📡 [API] Response: ${response.status} ${response.statusText}`, {
@@ -225,6 +226,7 @@ export const evidenceApi = {
         method: 'POST',
         headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
         body: formData,
+        credentials: 'include',
       }
     );
 
@@ -311,6 +313,7 @@ export const contractsApi = {
         method: 'POST',
         headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
         body: formData,
+        credentials: 'include',
       }
     );
 
@@ -409,6 +412,7 @@ export const kycApi = {
         method: 'POST',
         headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
         body: formData,
+        credentials: 'include',
       }
     );
 
@@ -507,6 +511,7 @@ export const apiClient = {
         'Content-Type': 'application/json',
         ...options.headers,
       },
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -531,6 +536,7 @@ export const apiClient = {
         ...options.headers,
       },
       body: JSON.stringify(data),
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -554,6 +560,7 @@ export const apiClient = {
         ...options.headers,
       },
       body: JSON.stringify(data),
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -576,6 +583,7 @@ export const apiClient = {
         'Content-Type': 'application/json',
         ...options.headers,
       },
+      credentials: 'include',
     });
 
     if (!response.ok) {

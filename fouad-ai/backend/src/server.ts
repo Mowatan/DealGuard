@@ -15,6 +15,7 @@ import kycRoutes from './modules/kyc/kyc.routes';
 import disputesRoutes from './modules/disputes/disputes.routes';
 import { custodyDocumentsRoutes } from './modules/custody-documents/custody-documents.routes';
 import { progressRoutes } from './modules/progress/progress.routes';
+import { testCorsRoutes } from './modules/test/test-cors.routes';
 
 config();
 
@@ -38,9 +39,19 @@ const server = Fastify({
 async function start() {
   try {
     // Register plugins with multiple CORS origins support
-    const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
+    // Check both CORS_ORIGIN (Railway) and FRONTEND_URL (legacy)
+    const corsEnv = process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:3000';
+    const allowedOrigins = corsEnv
       .split(',')
-      .map(origin => origin.trim());
+      .map(origin => origin.trim())
+      .filter(origin => origin.length > 0);
+
+    // Log CORS configuration on startup
+    server.log.info('🔐 CORS Configuration:', {
+      allowedOrigins,
+      env: process.env.NODE_ENV,
+      corsEnvVar: process.env.CORS_ORIGIN ? 'CORS_ORIGIN' : 'FRONTEND_URL',
+    });
 
     await server.register(cors, {
       origin: (origin, callback) => {
@@ -51,14 +62,22 @@ async function start() {
         }
 
         // Check if origin is in allowed list
-        if (allowedOrigins.includes(origin)) {
+        if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+          server.log.info(`✅ CORS: Allowed request from origin: ${origin}`);
           callback(null, true);
         } else {
-          server.log.warn(`Blocked CORS request from origin: ${origin}`);
+          server.log.warn(`❌ CORS: Blocked request from origin: ${origin}`, {
+            origin,
+            allowedOrigins,
+          });
           callback(new Error('Not allowed by CORS'), false);
         }
       },
       credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+      exposedHeaders: ['Content-Length', 'X-Request-Id'],
+      maxAge: 86400, // 24 hours - cache preflight requests
     });
 
     await server.register(multipart, {
@@ -91,6 +110,7 @@ async function start() {
     });
 
     // Register routes
+    await server.register(testCorsRoutes); // CORS test endpoint
     await server.register(usersRoutes, { prefix: '/api/users' });
     await server.register(dealsRoutes, { prefix: '/api/deals' });
     await server.register(contractsRoutes, { prefix: '/api/contracts' });
