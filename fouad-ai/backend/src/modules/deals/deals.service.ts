@@ -129,6 +129,7 @@ export async function createDeal(params: CreateDealParams) {
         milestones: {
           create: params.milestones.map((milestone, index) => ({
             order: index + 1,
+            title: milestone.name, // Use name as title
             name: milestone.name,
             description: milestone.description,
             status: 'PENDING',

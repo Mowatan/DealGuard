@@ -41,7 +41,8 @@ export async function createContractVersion(
       milestones: params.milestones
         ? {
             create: params.milestones.map((m) => ({
-              name: m.title,
+              title: m.title, // e.g., "First Payment"
+              name: m.title, // Use title for name as well for backward compatibility
               description: m.description,
               order: m.order,
               conditionsJson: m.conditionsJson,
