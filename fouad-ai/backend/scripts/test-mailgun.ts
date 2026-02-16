@@ -1,4 +1,8 @@
+import { config } from 'dotenv';
 import { emailService } from '../src/lib/email.service';
+
+// Load environment variables
+config();
 
 async function testMailgun() {
   console.log('🧪 Testing Mailgun email sending...\n');
