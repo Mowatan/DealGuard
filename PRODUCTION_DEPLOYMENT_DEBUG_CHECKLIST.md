@@ -42,11 +42,29 @@
 
 #### 1.3 Configure Clerk Domains
 
+⚠️ **IMPORTANT**: Only add custom domain AFTER verifying DNS propagation!
+
+**First, verify DNS is working**:
+```bash
+# Check if accounts.dealguard.org resolves
+nslookup accounts.dealguard.org
+
+# Should return: canonical name = accounts.clerk.services
+# If NXDOMAIN error, DNS not propagated yet - SKIP this step for now!
+```
+
+**If DNS is working**:
 1. In Clerk dashboard → **Domains** section
 2. Add your production domains:
    - `dealguard.org`
    - `www.dealguard.org`
 3. Remove any test/development domains if present
+
+**If DNS NOT working**:
+- SKIP adding custom domain for now
+- Clerk will use default hosted domain (works fine)
+- Come back to this step in 24-48 hours once DNS propagates
+- See `CLERK_DNS_FIX.md` for troubleshooting
 
 #### 1.4 Redeploy Frontend
 
@@ -234,6 +252,36 @@ This is actually **GOOD** - it means:
 1. Check if user is signed in to Clerk
 2. Check if Authorization header is being sent
 3. Verify Clerk webhook is configured (backend knows about Clerk users)
+
+### Issue: Clerk Sign-In Shows DNS Error (accounts.dealguard.org)
+
+**Error**: `DNS_PROBE_FINISHED_NXDOMAIN` when clicking "Sign In"
+
+**Cause**: Clerk custom domain configured but DNS not propagated yet
+
+**QUICK FIX** (choose one):
+
+**Option A - Remove Custom Domain (FASTEST)**:
+1. Go to: https://dashboard.clerk.com → Domains
+2. Remove `accounts.dealguard.org`
+3. Authentication works immediately with Clerk's default domain
+4. Add custom domain back once DNS propagates (24-48 hours)
+
+**Option B - Use Frontend API Override**:
+1. Get Frontend API from Clerk dashboard → API Keys
+2. Add to Vercel → Environment Variables → Production:
+   ```
+   NEXT_PUBLIC_CLERK_FRONTEND_API=<your-frontend-api>
+   ```
+3. Redeploy Vercel
+
+**Verify DNS Propagated**:
+```bash
+nslookup accounts.dealguard.org
+# Should return: canonical name = accounts.clerk.services
+```
+
+**Full Guide**: See `CLERK_DNS_FIX.md` for detailed troubleshooting
 
 ---
 
