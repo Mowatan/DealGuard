@@ -47,11 +47,11 @@ async function start() {
       .filter(origin => origin.length > 0);
 
     // Log CORS configuration on startup
-    server.log.info('🔐 CORS Configuration:', {
+    server.log.info({
       allowedOrigins,
       env: process.env.NODE_ENV,
       corsEnvVar: process.env.CORS_ORIGIN ? 'CORS_ORIGIN' : 'FRONTEND_URL',
-    });
+    }, '🔐 CORS Configuration');
 
     await server.register(cors, {
       origin: (origin, callback) => {
@@ -66,10 +66,10 @@ async function start() {
           server.log.info(`✅ CORS: Allowed request from origin: ${origin}`);
           callback(null, true);
         } else {
-          server.log.warn(`❌ CORS: Blocked request from origin: ${origin}`, {
+          server.log.warn({
             origin,
             allowedOrigins,
-          });
+          }, `❌ CORS: Blocked request from origin: ${origin}`);
           callback(new Error('Not allowed by CORS'), false);
         }
       },
