@@ -45,6 +45,9 @@ RUN npx prisma generate
 # Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
 
+# Copy email templates
+COPY templates ./templates
+
 # Copy entrypoint script
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
