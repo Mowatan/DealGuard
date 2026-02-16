@@ -40,6 +40,23 @@ async function verifyClerkConfig() {
 
   console.log('\nEnvironment:', process.env.NODE_ENV || 'development');
 
+  // Check optional custom domain configuration
+  const hasApiUrl = !!process.env.CLERK_API_URL;
+  const hasJwksUrl = !!process.env.CLERK_JWKS_URL;
+
+  if (hasApiUrl || hasJwksUrl) {
+    console.log('\nCustom Domain Configuration:');
+    if (hasApiUrl) {
+      console.log('  CLERK_API_URL:', process.env.CLERK_API_URL);
+    }
+    if (hasJwksUrl) {
+      console.log('  CLERK_JWKS_URL:', process.env.CLERK_JWKS_URL);
+    }
+    console.log('  Note: Custom domain configuration detected.');
+  } else {
+    console.log('\nCustom Domain: Not configured (using default Clerk domains)');
+  }
+
   // Check if keys are configured
   if (!hasSecretKey || !hasPublishableKey) {
     console.log('\n❌ CONFIGURATION ERROR');

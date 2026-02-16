@@ -194,19 +194,38 @@ export async function authenticate(
         });
       }
 
-      // Log Clerk configuration (without exposing full key)
+      // Build verification options
+      const verifyOptions: any = {
+        secretKey: process.env.CLERK_SECRET_KEY,
+      };
+
+      // Add publishable key for better JWK resolution
+      if (process.env.CLERK_PUBLISHABLE_KEY) {
+        verifyOptions.publishableKey = process.env.CLERK_PUBLISHABLE_KEY;
+      }
+
+      // Support custom Clerk domain (e.g., clerk.dealguard.org)
+      // This helps with JWKS URL resolution for custom domains
+      if (process.env.CLERK_API_URL) {
+        verifyOptions.apiUrl = process.env.CLERK_API_URL;
+      }
+
+      // Alternative: Direct JWKS URL (fallback)
+      // Note: Clerk SDK automatically resolves JWKS from keys, but this allows override
+      if (process.env.CLERK_JWKS_URL) {
+        verifyOptions.jwksUrl = process.env.CLERK_JWKS_URL;
+      }
+
+      // Log Clerk configuration (without exposing full keys)
       request.log.debug({
         hasSecretKey: !!process.env.CLERK_SECRET_KEY,
+        hasPublishableKey: !!process.env.CLERK_PUBLISHABLE_KEY,
+        hasApiUrl: !!process.env.CLERK_API_URL,
+        hasJwksUrl: !!process.env.CLERK_JWKS_URL,
         secretKeyPrefix: process.env.CLERK_SECRET_KEY?.substring(0, 10),
       }, 'Verifying Clerk token');
 
-      clerkPayload = await verifyClerkToken(token, {
-        secretKey: process.env.CLERK_SECRET_KEY,
-        // Adding publishableKey can help with JWK resolution
-        ...(process.env.CLERK_PUBLISHABLE_KEY && {
-          publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
-        }),
-      });
+      clerkPayload = await verifyClerkToken(token, verifyOptions);
     } catch (error) {
       // Enhanced error logging for debugging JWK issues
       const errorMessage = error instanceof Error ? error.message : 'Invalid token';
