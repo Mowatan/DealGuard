@@ -1,22 +1,33 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import { quarantineApi, ApiError } from '@/lib/api-client';
 import { Shield, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function EvidenceReviewPage() {
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const [quarantined, setQuarantined] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchQuarantined();
-  }, []);
+    if (isLoaded && isSignedIn) {
+      fetchQuarantined();
+    }
+  }, [isLoaded, isSignedIn]);
 
   const fetchQuarantined = async () => {
     try {
-      const data = await quarantineApi.listQuarantined();
+      const token = await getToken();
+      const data = await quarantineApi.listQuarantined(token);
       setQuarantined(data || []);
+      setError('');
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -29,11 +40,36 @@ export default function EvidenceReviewPage() {
     }
   };
 
+  const handleRelease = async (evidenceId: string) => {
+    const notes = prompt('Enter release notes (optional):');
+
+    setProcessingId(evidenceId);
+    try {
+      const token = await getToken();
+      await quarantineApi.release(evidenceId, notes || undefined, token);
+      await fetchQuarantined();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(`Failed to release evidence: ${err.message}`);
+      } else {
+        setError('Failed to release evidence');
+      }
+      console.error(err);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-gray-900">Evidence Review</h1>
-        <p className="text-center text-gray-600">Loading...</p>
+        <div>
+          <h1 className="text-3xl font-bold">Evidence Review</h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            Review and manage quarantined evidence
+          </p>
+        </div>
+        <p className="text-center text-muted-foreground">Loading...</p>
       </div>
     );
   }
@@ -41,78 +77,102 @@ export default function EvidenceReviewPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Evidence Review</h1>
-        <p className="mt-2 text-sm text-gray-600">
+        <h1 className="text-3xl font-bold">Evidence Review</h1>
+        <p className="text-sm text-muted-foreground mt-2">
           Review and manage quarantined evidence
         </p>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center">
-            <AlertTriangle className="w-8 h-8 text-yellow-600 mr-3" />
-            <div>
-              <p className="text-sm font-medium text-gray-600">Quarantined</p>
-              <p className="text-2xl font-semibold text-gray-900">{quarantined.length}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center">
-            <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
-            <div>
-              <p className="text-sm font-medium text-gray-600">Approved</p>
-              <p className="text-2xl font-semibold text-gray-900">-</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center">
-            <XCircle className="w-8 h-8 text-red-600 mr-3" />
-            <div>
-              <p className="text-sm font-medium text-gray-600">Rejected</p>
-              <p className="text-2xl font-semibold text-gray-900">-</p>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Quarantined</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{quarantined.length}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Approved</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">-</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Rejected</CardTitle>
+            <XCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">-</div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Evidence List */}
-      <div className="bg-white rounded-lg border border-gray-200">
+      <Card>
         {quarantined.length === 0 ? (
-          <div className="px-6 py-12 text-center text-gray-500">
-            <Shield className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-            <p>No quarantined evidence</p>
-            <p className="text-sm mt-2">Quarantined items will appear here for review</p>
-          </div>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Shield className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">No quarantined evidence</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Quarantined items will appear here for review
+            </p>
+          </CardContent>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <CardContent className="space-y-4 pt-6">
             {quarantined.map((item: any) => (
-              <div key={item.id} className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-900">{item.subject || 'Untitled'}</h3>
-                    <p className="text-sm text-gray-500 mt-1">Deal: {item.dealId}</p>
-                  </div>
-                  <span className="inline-flex px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                    QUARANTINED
-                  </span>
+              <div
+                key={item.id}
+                className="flex items-start justify-between border-b pb-4 last:border-b-0 last:pb-0"
+              >
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium">{item.subject || 'Untitled'}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Deal: {item.deal?.title || item.dealId}
+                  </p>
+                  {item.quarantineReason && (
+                    <p className="text-sm text-destructive mt-2">
+                      <strong>Reason:</strong> {item.quarantineReason}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Submitted {new Date(item.createdAt).toLocaleDateString()}
+                  </p>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Submitted {new Date(item.createdAt).toLocaleDateString()}
-                </p>
+                <div className="flex items-center gap-3">
+                  <Badge variant="secondary">QUARANTINED</Badge>
+                  {processingId === item.id ? (
+                    <span className="text-sm text-muted-foreground">Processing...</span>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => handleRelease(item.id)}
+                    >
+                      <CheckCircle className="w-4 h-4 mr-1" />
+                      Release
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
-          </div>
+          </CardContent>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

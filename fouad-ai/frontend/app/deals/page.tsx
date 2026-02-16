@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@clerk/nextjs';
 import { dealsApi, ApiError } from '@/lib/api-client';
 
 interface Deal {
@@ -22,25 +24,50 @@ interface Deal {
 }
 
 export default function DealsPage() {
+  const router = useRouter();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Wait for Clerk to load
+    if (!isLoaded) {
+      console.log('⏳ Waiting for Clerk to load...');
+      return;
+    }
+
+    // Check if user is signed in
+    if (!isSignedIn) {
+      console.warn('⚠️ User not signed in, redirecting to /sign-in');
+      router.push('/sign-in');
+      return;
+    }
+
+    console.log('✅ User is signed in, fetching deals...');
     fetchDeals();
-  }, []);
+  }, [isLoaded, isSignedIn, router]);
 
   const fetchDeals = async () => {
     try {
-      const data = await dealsApi.list({ limit: 100 });
+      const token = await getToken();
+      const data = await dealsApi.list({ limit: 100, token });
       setDeals(data.deals || []);
     } catch (err) {
+      console.error('❌ Failed to fetch deals:', err);
+
       if (err instanceof ApiError) {
-        setError(err.message);
+        // Handle authentication errors
+        if (err.status === 401 || err.data?.authRequired) {
+          setError('Please sign in to view deals.');
+          // Redirect to sign in after a brief delay
+          setTimeout(() => router.push('/sign-in'), 2000);
+        } else {
+          setError(err.message);
+        }
       } else {
         setError('Failed to load deals. Make sure the backend is running.');
       }
-      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -56,11 +83,13 @@ export default function DealsPage() {
     CLOSED: 'bg-slate-100 text-slate-700',
   };
 
-  if (loading) {
+  if (!isLoaded || loading) {
     return (
       <div className="min-h-screen bg-slate-50 p-8">
         <div className="container mx-auto">
-          <p className="text-center text-slate-600">Loading deals...</p>
+          <p className="text-center text-slate-600">
+            {!isLoaded ? 'Checking authentication...' : 'Loading deals...'}
+          </p>
         </div>
       </div>
     );
@@ -73,7 +102,7 @@ export default function DealsPage() {
           <div className="flex justify-between items-center">
             <div>
               <Link href="/" className="text-2xl font-bold text-slate-900">
-                fouad.ai
+                DealGuard
               </Link>
               <p className="text-sm text-slate-600 mt-1">Deal Management</p>
             </div>

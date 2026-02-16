@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { CreateDealModal } from '@/components/admin/CreateDealModal';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 
 export function CreateDealButton() {

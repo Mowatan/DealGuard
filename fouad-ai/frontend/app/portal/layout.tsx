@@ -1,7 +1,9 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
+import { AppHeader } from '@/components/app-header';
 import Link from 'next/link';
 import { Home, FileText, Upload } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default async function PortalLayout({
   children,
@@ -33,37 +35,44 @@ export default async function PortalLayout({
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200">
-        <div className="flex flex-col h-full">
-          <div className="flex items-center h-16 px-6 border-b border-gray-200">
-            <h1 className="text-xl font-bold text-blue-600">fouad.ai</h1>
-            <span className="ml-2 px-2 py-1 text-xs font-semibold text-purple-600 bg-purple-100 rounded">
-              Portal
-            </span>
-          </div>
-
-          <nav className="flex-1 px-4 py-6 space-y-1">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 hover:text-gray-900 transition-colors"
-              >
-                <item.icon className="w-5 h-5 mr-3" />
-                {item.name}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="p-4 border-t border-gray-200">
-            <div className="text-xs text-gray-500">Party Portal</div>
-          </div>
-        </div>
+    <div className="relative flex h-screen flex-col overflow-hidden">
+      {/* Decorative lavender background accents */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-20 top-1/4 h-96 w-96 rounded-full bg-primary/5" />
+        <div className="absolute -right-32 top-0 h-[500px] w-[500px] rotate-12 bg-primary/[0.04]" style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%)" }} />
+        <div className="absolute -bottom-20 -left-10 h-64 w-64 rounded-full bg-primary/[0.06]" />
       </div>
-
-      <div className="pl-64">
-        <main className="p-8">{children}</main>
+      <div className="relative z-10 flex h-full flex-col">
+        <AppHeader />
+        <div className="flex flex-1 overflow-hidden">
+          {/* Portal Sidebar */}
+          <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-card py-6">
+            <nav className="flex flex-1 flex-col gap-1 px-4">
+              {navigation.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors",
+                      "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span>{item.name}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+            <div className="px-4 pt-4 border-t border-border">
+              <div className="text-xs text-muted-foreground">Party Portal</div>
+            </div>
+          </aside>
+          <main className="flex-1 overflow-y-auto p-8">
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   );

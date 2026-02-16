@@ -1,10 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { Modal } from '@/components/ui/Modal';
-import { Button } from '@/components/ui/Button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { dealsApi } from '@/lib/api-client';
-import { useToast } from '@/components/ui/Toast';
+import { useToast } from '@/components/ui/use-toast';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 interface StatusUpdateModalProps {
   isOpen: boolean;
@@ -30,7 +46,7 @@ const STATUSES = [
 ];
 
 export function StatusUpdateModal({ isOpen, onClose, dealId, currentStatus, onSuccess }: StatusUpdateModalProps) {
-  const { showToast } = useToast();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [newStatus, setNewStatus] = useState(currentStatus);
 
@@ -40,52 +56,66 @@ export function StatusUpdateModal({ isOpen, onClose, dealId, currentStatus, onSu
 
     try {
       await dealsApi.updateStatus(dealId, newStatus);
-      showToast('success', 'Deal status updated successfully!');
+      toast({
+        title: 'Success',
+        description: 'Deal status updated successfully!',
+      });
       onSuccess();
       onClose();
     } catch (error: any) {
-      showToast('error', error.message || 'Failed to update status');
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update status',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Update Deal Status" size="md">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Current Status: <span className="font-semibold">{currentStatus.replace(/_/g, ' ')}</span>
-          </label>
-          <select
-            value={newStatus}
-            onChange={(e) => setNewStatus(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-          >
-            {STATUSES.map((status) => (
-              <option key={status.value} value={status.value}>
-                {status.label}
-              </option>
-            ))}
-          </select>
-        </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Update Deal Status</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label>
+              Current Status: <span className="font-semibold">{currentStatus.replace(/_/g, ' ')}</span>
+            </Label>
+            <Select value={newStatus} onValueChange={setNewStatus}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUSES.map((status) => (
+                  <SelectItem key={status.value} value={status.value}>
+                    {status.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <p className="text-sm text-yellow-800">
-            <strong>Note:</strong> Updating the deal status will be logged in the audit trail.
-            Make sure this change is authorized.
-          </p>
-        </div>
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Note:</strong> Updating the deal status will be logged in the audit trail.
+              Make sure this change is authorized.
+            </AlertDescription>
+          </Alert>
 
-        <div className="flex justify-end gap-3">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" loading={loading}>
-            Update Status
-          </Button>
-        </div>
-      </form>
-    </Modal>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Updating...' : 'Update Status'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

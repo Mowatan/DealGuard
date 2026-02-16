@@ -8,14 +8,17 @@ import {
   SignedOut,
   UserButton,
 } from '@clerk/nextjs';
-import { ToastProvider } from '@/components/ui/Toast';
+import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'fouad.ai - Digital Escrow Platform',
-  description: 'Conditional settlement platform for asynchronous transactions',
+  title: 'DealGuard - Secure Deal Governance',
+  description: 'Enterprise-grade escrow platform for complex business transactions. Evidence-based milestone tracking with AI-assisted workflow management and blockchain-anchored audit trails.',
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({
@@ -27,31 +30,8 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body className={inter.className}>
-          <ToastProvider>
-            <header className="border-b">
-              <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-                <h1 className="text-xl font-bold">fouad.ai</h1>
-                <div className="flex gap-4 items-center">
-                  <SignedOut>
-                    <SignInButton mode="modal">
-                      <button className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
-                        Sign In
-                      </button>
-                    </SignInButton>
-                    <SignUpButton mode="modal">
-                      <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                        Sign Up
-                      </button>
-                    </SignUpButton>
-                  </SignedOut>
-                  <SignedIn>
-                    <UserButton afterSignOutUrl="/" />
-                  </SignedIn>
-                </div>
-              </div>
-            </header>
-            {children}
-          </ToastProvider>
+          {children}
+          <Toaster />
         </body>
       </html>
     </ClerkProvider>
