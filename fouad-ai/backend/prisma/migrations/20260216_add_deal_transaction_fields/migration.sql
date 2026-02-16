@@ -1,0 +1,5 @@
+-- AlterTable: Add missing Deal columns for transaction type and service tier
+ALTER TABLE "Deal" ADD COLUMN IF NOT EXISTS "transactionType" TEXT NOT NULL DEFAULT 'SIMPLE';
+ALTER TABLE "Deal" ADD COLUMN IF NOT EXISTS "serviceTier" TEXT NOT NULL DEFAULT 'GOVERNANCE_ADVISORY';
+ALTER TABLE "Deal" ADD COLUMN IF NOT EXISTS "estimatedValue" DECIMAL(15,2);
+ALTER TABLE "Deal" ADD COLUMN IF NOT EXISTS "serviceFee" DECIMAL(15,2);
