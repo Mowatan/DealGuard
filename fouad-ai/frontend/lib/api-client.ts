@@ -1,13 +1,20 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
+// Enhanced API error with debugging info
 export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
-    public data?: any
+    public data?: any,
+    public url?: string,
+    public method?: string
   ) {
     super(message);
     this.name = 'ApiError';
+  }
+
+  toString(): string {
+    return `ApiError [${this.method} ${this.url}]: ${this.status} - ${this.message}`;
   }
 }
 
@@ -41,10 +48,12 @@ async function getAuthToken(providedToken?: string | null): Promise<string | nul
 
 async function fetchApi<T>(
   endpoint: string,
-  options: RequestInit & { token?: string | null } = {}
+  options: RequestInit & { token?: string | null; retries?: number } = {}
 ): Promise<T> {
-  const { token: providedToken, ...fetchOptions } = options;
+  const { token: providedToken, retries = 0, ...fetchOptions } = options;
   const token = await getAuthToken(providedToken);
+  const method = options.method || 'GET';
+  const url = `${API_BASE_URL}${endpoint}`;
 
   // Check if we need authentication for this endpoint
   const requiresAuth = !endpoint.includes('/api/webhooks');
@@ -54,7 +63,9 @@ async function fetchApi<T>(
     throw new ApiError(
       'Authentication required. Please sign in to continue.',
       401,
-      { authRequired: true }
+      { authRequired: true },
+      url,
+      method
     );
   }
 
@@ -67,28 +78,83 @@ async function fetchApi<T>(
     headers.Authorization = `Bearer ${token}`;
   }
 
-  console.log(`📡 [API] ${options.method || 'GET'} ${endpoint}`, {
+  console.log(`📡 [API] ${method} ${endpoint}`, {
+    url,
     hasToken: !!token,
     headers: Object.keys(headers),
+    env: process.env.NODE_ENV,
   });
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...fetchOptions,
-    headers,
-  });
+  try {
+    const response = await fetch(url, {
+      ...fetchOptions,
+      headers,
+    });
 
-  console.log(`📡 [API] Response: ${response.status} ${response.statusText}`);
+    console.log(`📡 [API] Response: ${response.status} ${response.statusText}`, {
+      url,
+      method,
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      const errorMessage = error.message || `HTTP ${response.status}: ${response.statusText}`;
+
+      throw new ApiError(
+        errorMessage,
+        response.status,
+        error,
+        url,
+        method
+      );
+    }
+
+    return response.json();
+  } catch (error: any) {
+    // Handle network errors (CORS, DNS, timeout, etc.)
+    if (error instanceof ApiError) {
+      // Already an ApiError, just rethrow
+      throw error;
+    }
+
+    // Network error (fetch failed)
+    const isNetworkError = error.name === 'TypeError' || error.message.includes('fetch');
+
+    console.error('❌ [API] Request failed:', {
+      error: error.message,
+      url,
+      method,
+      isNetworkError,
+      apiBaseUrl: API_BASE_URL,
+    });
+
+    // Detailed error message for debugging
+    let debugMessage = error.message;
+    if (isNetworkError) {
+      debugMessage = `Network error: Cannot reach API at ${API_BASE_URL}. ` +
+        `Check: (1) API is running, (2) CORS configured, (3) URL is correct. ` +
+        `Original error: ${error.message}`;
+    }
+
     throw new ApiError(
-      error.message || `HTTP ${response.status}`,
-      response.status,
-      error
+      debugMessage,
+      0, // 0 indicates network/CORS error (not HTTP status)
+      {
+        originalError: error.message,
+        isNetworkError,
+        apiBaseUrl: API_BASE_URL,
+        possibleCauses: isNetworkError ? [
+          'API server is down',
+          'CORS not configured correctly',
+          'DNS resolution failed',
+          'Network timeout',
+          'Firewall blocking request'
+        ] : ['Unknown error']
+      },
+      url,
+      method
     );
   }
-
-  return response.json();
 }
 
 // Deals API

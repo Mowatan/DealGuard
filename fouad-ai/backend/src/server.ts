@@ -37,9 +37,27 @@ const server = Fastify({
 
 async function start() {
   try {
-    // Register plugins
+    // Register plugins with multiple CORS origins support
+    const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
+      .split(',')
+      .map(origin => origin.trim());
+
     await server.register(cors, {
-      origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+      origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, Postman, curl, etc.)
+        if (!origin) {
+          callback(null, true);
+          return;
+        }
+
+        // Check if origin is in allowed list
+        if (allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          server.log.warn(`Blocked CORS request from origin: ${origin}`);
+          callback(new Error('Not allowed by CORS'), false);
+        }
+      },
       credentials: true,
     });
 
