@@ -45,6 +45,10 @@ RUN npx prisma generate
 # Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
+
 # Expose port
 EXPOSE 4000
 
@@ -52,5 +56,5 @@ EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:4000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Start server (assumes your start script runs the compiled dist/server.js)
-CMD ["npm", "start"]
+# Start server with entrypoint script
+ENTRYPOINT ["./docker-entrypoint.sh"]
