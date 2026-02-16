@@ -3,8 +3,6 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000',
   },
-  // Skip static page generation at build time - fixes Clerk pre-render issues
-  output: 'standalone',
 };
 
 module.exports = nextConfig;
