@@ -369,7 +369,7 @@ model Milestone {
 
   // Phase 1: Clearer naming
   order         Int // Order: 1, 2, 3...
-  title         String // Milestone title (e.g., "First Payment", "Delivery of Goods")
+  title         String? // Milestone title (e.g., "First Payment", "Delivery of Goods")
   name          String // Milestone name/label (e.g., "down payment", "to commence")
   description   String? // Renamed from conditionText for clarity
   conditionText String? // Kept for backward compatibility
