@@ -64,28 +64,79 @@ export const emailSendingWorker = new Worker(
     const { to, subject, template, variables, dealId } = job.data;
     console.log(`Sending email: ${template} to ${Array.isArray(to) ? to.join(', ') : to}`);
 
-    const { emailService } = await import('./email.service');
-    const result = await emailService.sendEmail({
-      to,
-      subject,
-      template,
-      variables,
-      dealId,
-    });
+    try {
+      // Create fresh nodemailer transporter for each email to avoid connection issues
+      const nodemailer = await import('nodemailer');
+      const fs = await import('fs/promises');
+      const path = await import('path');
 
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to send email');
+      const transporter = nodemailer.default.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT || '587', 10),
+        secure: process.env.SMTP_PORT === '465',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASSWORD,
+        },
+        connectionTimeout: 30000,
+        greetingTimeout: 30000,
+        socketTimeout: 30000,
+      });
+
+      // Load and render template
+      const templatePath = path.join(__dirname, '..', '..', 'templates', 'emails', `${template}.html`);
+      let html = await fs.readFile(templatePath, 'utf-8');
+
+      // Replace template variables
+      Object.entries(variables).forEach(([key, value]) => {
+        const placeholder = new RegExp(`{{${key}}}`, 'g');
+        html = html.replace(placeholder, String(value || ''));
+      });
+
+      // Handle test mode
+      const testMode = process.env.EMAIL_TEST_MODE === 'true';
+      const finalTo = testMode && process.env.EMAIL_TEST_RECIPIENT
+        ? process.env.EMAIL_TEST_RECIPIENT
+        : (Array.isArray(to) ? to.join(', ') : to);
+
+      if (testMode) {
+        console.log(`Test mode: Redirecting to ${finalTo}`);
+      }
+
+      // Send email
+      const result = await transporter.sendMail({
+        from: process.env.EMAIL_FROM || 'DealGuard <noreply@dealguard.org>',
+        to: finalTo,
+        subject,
+        html,
+      });
+
+      console.log('✅ Email sent successfully:', {
+        template,
+        messageId: result.messageId,
+        recipients: finalTo,
+      });
+
+      return { success: true, messageId: result.messageId };
+    } catch (error: any) {
+      console.error('Failed to send email:', {
+        error: error.message || 'Unknown error',
+        code: error.code,
+        template,
+        dealId,
+      });
+      throw error;
     }
-
-    return { success: true, messageId: result.messageId };
   },
   {
     connection,
-    concurrency: 5, // Process 5 emails concurrently
+    concurrency: 1, // One email at a time to avoid any connection issues
     limiter: {
       max: 5, // Max 5 jobs
-      duration: 1000, // Per second (rate limiting)
+      duration: 30000, // Per 30 seconds
     },
+    lockDuration: 60000, // 60 second timeout for email jobs
+    maxStalledCount: 2, // Retry up to 2 times if stalled
   }
 );
 

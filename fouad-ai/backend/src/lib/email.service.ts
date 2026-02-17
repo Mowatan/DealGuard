@@ -1,4 +1,5 @@
-import nodemailer from 'nodemailer';
+import Mailgun from 'mailgun.js';
+import FormData from 'form-data';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -17,38 +18,42 @@ interface EmailResult {
 }
 
 class EmailService {
-  private transporter: nodemailer.Transporter | null = null;
+  private mailgunClient: any = null;
   private templateCache: Map<string, string> = new Map();
   private isInitialized = false;
 
   /**
-   * Initialize nodemailer transporter from environment variables
+   * Initialize Mailgun HTTP client from environment variables
+   *
+   * Why HTTP API instead of SMTP?
+   * Railway (and many PaaS providers) block outbound SMTP connections (ports 25, 465, 587)
+   * for security/anti-spam reasons. Mailgun's HTTP API works perfectly on Railway.
    */
-  initializeTransporter(): void {
+  initializeMailgun(): void {
     if (this.isInitialized) {
       return;
     }
 
     try {
-      const smtpConfig = {
-        host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT || '587', 10),
-        secure: process.env.SMTP_PORT === '465', // true for 465, false for other ports
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASSWORD,
-        },
-      };
+      const apiKey = process.env.MAILGUN_API_KEY;
+      const domain = process.env.MAILGUN_DOMAIN;
 
       // Validate required config
-      if (!smtpConfig.host || !smtpConfig.auth.user || !smtpConfig.auth.pass) {
-        console.warn('Email service: SMTP configuration incomplete, emails will not be sent');
+      if (!apiKey || !domain) {
+        console.warn('Email service: Mailgun API configuration incomplete, emails will not be sent');
+        console.warn('Required: MAILGUN_API_KEY and MAILGUN_DOMAIN');
         return;
       }
 
-      this.transporter = nodemailer.createTransport(smtpConfig);
+      const mailgun = new Mailgun(FormData);
+      this.mailgunClient = mailgun.client({
+        username: 'api',
+        key: apiKey,
+      });
+
       this.isInitialized = true;
-      console.log('Email service initialized successfully');
+      console.log('✅ Email service initialized successfully with Mailgun HTTP API');
+      console.log(`   Domain: ${domain}`);
     } catch (error) {
       console.error('Failed to initialize email service:', error);
     }
@@ -110,17 +115,17 @@ class EmailService {
   }
 
   /**
-   * Send email with template rendering
+   * Send email with template rendering using Mailgun HTTP API
    * This function never throws - it always returns a result object
    */
   async sendEmail(options: EmailOptions): Promise<EmailResult> {
-    // Initialize transporter if not already done
+    // Initialize Mailgun client if not already done
     if (!this.isInitialized) {
-      this.initializeTransporter();
+      this.initializeMailgun();
     }
 
-    // If transporter is not available, fail gracefully
-    if (!this.transporter) {
+    // If Mailgun client is not available, fail gracefully
+    if (!this.mailgunClient) {
       console.warn('Email service not configured, skipping email send');
       return {
         success: false,
@@ -147,24 +152,25 @@ class EmailService {
 
       let finalRecipients = validRecipients;
       if (testMode && testRecipient) {
-        console.log(`Test mode: Redirecting email to ${testRecipient}`);
-        console.log(`Original recipients: ${validRecipients.join(', ')}`);
+        console.log(`📧 Test mode: Redirecting email to ${testRecipient}`);
+        console.log(`   Original recipients: ${validRecipients.join(', ')}`);
         finalRecipients = [testRecipient];
       }
 
       // Render email template
       const html = await this.renderTemplate(options.template, options.variables);
 
-      // Send email
-      const result = await this.transporter.sendMail({
+      // Send email via Mailgun HTTP API
+      const domain = process.env.MAILGUN_DOMAIN || 'mg.dealguard.org';
+      const result = await this.mailgunClient.messages.create(domain, {
         from: process.env.EMAIL_FROM || 'DealGuard <noreply@dealguard.org>',
-        to: finalRecipients.join(', '),
+        to: finalRecipients,
         subject: options.subject,
         html,
       });
 
-      console.log('Email sent successfully:', {
-        messageId: result.messageId,
+      console.log('✅ Email sent successfully:', {
+        messageId: result.id,
         template: options.template,
         recipients: finalRecipients,
         dealId: options.dealId,
@@ -172,14 +178,15 @@ class EmailService {
 
       return {
         success: true,
-        messageId: result.messageId,
+        messageId: result.id,
       };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Failed to send email:', {
+    } catch (error: any) {
+      const errorMessage = error.message || error.toString();
+      console.error('❌ Failed to send email:', {
         error: errorMessage,
         template: options.template,
         dealId: options.dealId,
+        details: error.details || error,
       });
 
       return {
