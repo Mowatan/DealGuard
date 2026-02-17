@@ -2,7 +2,10 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import { config } from 'dotenv';
+import { promises as fs } from 'fs';
+import * as path from 'path';
 import { prisma } from './lib/prisma';
+import { storage } from './lib/storage';
 import { dealsRoutes } from './modules/deals/deals.routes';
 import { contractsRoutes } from './modules/contracts/contracts.routes';
 import { evidenceRoutes } from './modules/evidence/evidence.routes';
@@ -102,11 +105,64 @@ async function start() {
 
     // Health check
     server.get('/health', async () => {
+      const storageStatus = await storage.healthCheck();
+
       return {
         status: 'ok',
         timestamp: new Date().toISOString(),
         database: await checkDatabase(),
+        storage: {
+          current: storageStatus.current,
+          providers: {
+            primary: storageStatus.primary ? 'healthy' : 'unhealthy',
+            fallback: storageStatus.fallback === null ? 'disabled' :
+                     (storageStatus.fallback ? 'healthy' : 'unhealthy')
+          }
+        }
       };
+    });
+
+    // Static file serving for local storage fallback
+    server.get('/files/:bucket/:key', async (request, reply) => {
+      const { bucket, key } = request.params as { bucket: string; key: string };
+
+      // Security: Validate bucket against whitelist (prevent path traversal)
+      const validBuckets = ['fouad-documents', 'fouad-evidence'];
+      if (!validBuckets.includes(bucket)) {
+        return reply.code(403).send({ error: 'Invalid bucket' });
+      }
+
+      // Get local storage path from environment
+      const localStoragePath = process.env.STORAGE_LOCAL_PATH || '/app/uploads';
+      const filePath = path.join(localStoragePath, bucket, key);
+
+      try {
+        // Check file exists and is readable
+        await fs.access(filePath, fs.constants.R_OK);
+
+        // Read file and send
+        const fileBuffer = await fs.readFile(filePath);
+
+        // Set content type based on file extension
+        const ext = path.extname(key).toLowerCase();
+        const mimeTypes: Record<string, string> = {
+          '.pdf': 'application/pdf',
+          '.png': 'image/png',
+          '.jpg': 'image/jpeg',
+          '.jpeg': 'image/jpeg',
+          '.gif': 'image/gif',
+          '.txt': 'text/plain',
+          '.json': 'application/json',
+        };
+
+        const contentType = mimeTypes[ext] || 'application/octet-stream';
+        reply.header('Content-Type', contentType);
+
+        return reply.send(fileBuffer);
+      } catch (error) {
+        // File not found or not readable
+        return reply.code(404).send({ error: 'File not found' });
+      }
     });
 
     // Register routes

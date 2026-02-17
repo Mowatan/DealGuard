@@ -48,6 +48,9 @@ COPY --from=builder /app/dist ./dist
 # Copy email templates
 COPY templates ./templates
 
+# Create uploads directory for local storage fallback
+RUN mkdir -p /app/uploads && chmod 755 /app/uploads
+
 # Copy entrypoint script
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
