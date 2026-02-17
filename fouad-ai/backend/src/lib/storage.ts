@@ -1,18 +1,21 @@
 /**
  * Storage Service Orchestrator
  *
- * Manages storage providers (MinIO primary, Local FS fallback) and handles
- * automatic failover between them. This service maintains backward compatibility
- * with existing code while adding resilience.
+ * Manages storage providers with automatic failover. Supports multiple backends:
+ * - S3/R2 (production - primary when credentials available)
+ * - MinIO (development/staging)
+ * - Local FS (fallback)
  *
  * Key features:
- * - Automatic fallback from MinIO to Local FS on failures
- * - Health monitoring of both providers
- * - Transparent operation (callers don't need to know about fallback)
+ * - Automatic provider selection based on available credentials
+ * - Automatic failover between providers on failures
+ * - Health monitoring of all providers
+ * - Transparent operation (callers don't need to know about provider)
  * - Comprehensive logging for monitoring and debugging
  */
 
 import { StorageProvider, UploadResult, StorageHealthStatus, StorageConfig } from './storage/types';
+import { S3StorageProvider } from './storage/s3-provider';
 import { MinioStorageProvider } from './storage/minio-provider';
 import { LocalStorageProvider } from './storage/local-provider';
 
@@ -20,9 +23,10 @@ import { LocalStorageProvider } from './storage/local-provider';
 export { UploadResult } from './storage/types';
 
 export class StorageService {
-  private primaryProvider: MinioStorageProvider;
-  private fallbackProvider: LocalStorageProvider | null = null;
-  private currentProvider: StorageProvider;
+  private s3Provider: S3StorageProvider | null = null;
+  private minioProvider: MinioStorageProvider | null = null;
+  private localProvider: LocalStorageProvider | null = null;
+  private currentProvider!: StorageProvider; // Definite assignment - set in constructor before use
   private fallbackEnabled: boolean;
 
   constructor() {
@@ -33,7 +37,7 @@ export class StorageService {
       minioAccessKey: process.env.MINIO_ACCESS_KEY || 'admin',
       minioSecretKey: process.env.MINIO_SECRET_KEY || 'adminpassword',
       minioUseSSL: process.env.MINIO_USE_SSL === 'true',
-      fallbackEnabled: process.env.STORAGE_FALLBACK_ENABLED === 'true',
+      fallbackEnabled: process.env.STORAGE_FALLBACK_ENABLED !== 'false', // Default to true
       localStoragePath: process.env.STORAGE_LOCAL_PATH || '/app/uploads',
       publicUrl: process.env.PUBLIC_URL || 'http://localhost:4000',
       documentsBucket: process.env.MINIO_BUCKET_DOCUMENTS || 'fouad-documents',
@@ -42,13 +46,40 @@ export class StorageService {
 
     this.fallbackEnabled = config.fallbackEnabled;
 
-    // Initialize primary provider (MinIO)
-    this.primaryProvider = new MinioStorageProvider(config);
-    this.currentProvider = this.primaryProvider;
+    // Priority 1: Try S3/R2 if credentials are available
+    if (process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY) {
+      try {
+        this.s3Provider = new S3StorageProvider(config);
+        this.currentProvider = this.s3Provider;
+        console.log('✅ Storage: Using S3/R2 as primary provider');
+      } catch (error) {
+        console.error('❌ Failed to initialize S3/R2 provider:', error);
+      }
+    }
 
-    // Initialize fallback provider if enabled
+    // Priority 2: MinIO (if S3 not available)
+    if (!this.s3Provider) {
+      try {
+        this.minioProvider = new MinioStorageProvider(config);
+        this.currentProvider = this.minioProvider;
+        console.log('✅ Storage: Using MinIO as primary provider');
+      } catch (error) {
+        console.error('❌ Failed to initialize MinIO provider:', error);
+      }
+    }
+
+    // Priority 3: Local storage fallback (always available)
     if (this.fallbackEnabled) {
-      this.fallbackProvider = new LocalStorageProvider(config);
+      this.localProvider = new LocalStorageProvider(config);
+      if (!this.s3Provider && !this.minioProvider) {
+        this.currentProvider = this.localProvider;
+        console.log('✅ Storage: Using LocalStorage as primary provider');
+      }
+    }
+
+    // Ensure we have at least one provider
+    if (!this.currentProvider) {
+      throw new Error('No storage provider available. Please configure S3, MinIO, or enable local storage fallback.');
     }
 
     // Run health checks on startup
@@ -60,27 +91,48 @@ export class StorageService {
    */
   private async initializeProviders(): Promise<void> {
     try {
-      const primaryHealthy = await this.primaryProvider.healthCheck();
+      const currentHealthy = await this.currentProvider.healthCheck();
 
-      if (primaryHealthy) {
-        console.log('✅ Storage: MinIO is healthy');
-        this.currentProvider = this.primaryProvider;
-      } else if (this.fallbackEnabled && this.fallbackProvider) {
-        console.log('⚠️  Storage: MinIO unavailable, checking fallback...');
-        const fallbackHealthy = await this.fallbackProvider.healthCheck();
-
-        if (fallbackHealthy) {
-          this.currentProvider = this.fallbackProvider;
-          console.log('✅ Storage: Now using LocalFileSystem fallback');
-        } else {
-          console.error('❌ Storage: Both primary and fallback providers are unavailable');
-        }
+      if (currentHealthy) {
+        console.log(`✅ Storage: ${this.currentProvider.getProviderName()} is healthy`);
       } else {
-        console.error('❌ Storage: MinIO unavailable and fallback is disabled');
+        console.warn(`⚠️  Storage: ${this.currentProvider.getProviderName()} health check failed`);
+        // Try to switch to next available provider
+        await this.tryFallbackProviders();
       }
     } catch (error) {
       console.error('Storage initialization error:', error);
+      await this.tryFallbackProviders();
     }
+  }
+
+  /**
+   * Try to switch to next available healthy provider
+   */
+  private async tryFallbackProviders(): Promise<void> {
+    // Try providers in order: S3/R2 -> MinIO -> Local
+    const providers: Array<StorageProvider | null> = [
+      this.s3Provider,
+      this.minioProvider,
+      this.localProvider,
+    ];
+
+    for (const provider of providers) {
+      if (!provider || provider === this.currentProvider) continue;
+
+      try {
+        const healthy = await provider.healthCheck();
+        if (healthy) {
+          this.currentProvider = provider;
+          console.log(`✅ Storage: Switched to ${provider.getProviderName()}`);
+          return;
+        }
+      } catch (error) {
+        console.error(`❌ ${provider.getProviderName()} health check failed:`, error);
+      }
+    }
+
+    console.error('❌ Storage: No healthy providers available');
   }
 
   /**
@@ -102,59 +154,31 @@ export class StorageService {
         error
       );
 
-      // If fallback is available and we're not already using it, try to switch
-      if (
-        this.fallbackEnabled &&
-        this.fallbackProvider &&
-        this.currentProvider !== this.fallbackProvider
-      ) {
-        console.log(`⚠️  Attempting to switch to fallback for operation: ${operationName}`);
-        const switched = await this.switchToFallback(`Operation ${operationName} failed`);
+      // Try all other available providers
+      const providers: Array<StorageProvider | null> = [
+        this.s3Provider,
+        this.minioProvider,
+        this.localProvider,
+      ];
 
-        if (switched) {
-          // Retry operation with fallback provider
-          try {
-            return await operation(this.currentProvider);
-          } catch (fallbackError) {
-            console.error(
-              `Storage operation failed (${operationName}) with fallback provider:`,
-              fallbackError
-            );
-            throw fallbackError;
-          }
+      for (const provider of providers) {
+        if (!provider || provider === this.currentProvider) continue;
+
+        console.log(`⚠️  Attempting ${operationName} with ${provider.getProviderName()}...`);
+
+        try {
+          const result = await operation(provider);
+          // Success! Switch to this provider for future operations
+          this.currentProvider = provider;
+          console.log(`✅ Storage: Switched to ${provider.getProviderName()} for future operations`);
+          return result;
+        } catch (fallbackError) {
+          console.error(`❌ ${provider.getProviderName()} also failed:`, fallbackError);
         }
       }
 
-      // No fallback available or fallback also failed
+      // All providers failed
       throw error;
-    }
-  }
-
-  /**
-   * Switch to fallback provider if available and healthy
-   * @param reason Reason for switching (for logging)
-   * @returns true if switch was successful, false otherwise
-   */
-  private async switchToFallback(reason: string): Promise<boolean> {
-    if (!this.fallbackEnabled || !this.fallbackProvider) {
-      console.log('⚠️  Fallback is not enabled or available');
-      return false;
-    }
-
-    try {
-      const fallbackHealthy = await this.fallbackProvider.healthCheck();
-
-      if (fallbackHealthy) {
-        this.currentProvider = this.fallbackProvider;
-        console.log(`✅ Storage: Switched to fallback (${this.fallbackProvider.getProviderName()}). Reason: ${reason}`);
-        return true;
-      } else {
-        console.error('❌ Storage: Fallback provider is not healthy');
-        return false;
-      }
-    } catch (error) {
-      console.error('Error checking fallback health:', error);
-      return false;
     }
   }
 
@@ -211,17 +235,44 @@ export class StorageService {
    * @returns Health status object showing current provider and health of all providers
    */
   async healthCheck(): Promise<StorageHealthStatus> {
-    const primaryHealthy = await this.primaryProvider.healthCheck();
-    let fallbackHealthy: boolean | null = null;
+    const providers: any = {};
 
-    if (this.fallbackEnabled && this.fallbackProvider) {
-      fallbackHealthy = await this.fallbackProvider.healthCheck();
+    // Check S3/R2
+    if (this.s3Provider) {
+      try {
+        providers.s3 = await this.s3Provider.healthCheck();
+      } catch (error) {
+        providers.s3 = false;
+      }
     }
+
+    // Check MinIO
+    if (this.minioProvider) {
+      try {
+        providers.minio = await this.minioProvider.healthCheck();
+      } catch (error) {
+        providers.minio = false;
+      }
+    }
+
+    // Check Local
+    if (this.localProvider) {
+      try {
+        providers.local = await this.localProvider.healthCheck();
+      } catch (error) {
+        providers.local = false;
+      }
+    }
+
+    // Legacy compatibility: use first available provider as "primary"
+    const primary = providers.s3 ?? providers.minio ?? false;
+    const fallback = providers.local ?? null;
 
     return {
       current: this.currentProvider.getProviderName(),
-      primary: primaryHealthy,
-      fallback: fallbackHealthy,
+      providers,
+      primary,
+      fallback,
     };
   }
 

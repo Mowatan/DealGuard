@@ -66,8 +66,14 @@ export interface StorageProvider {
 
 export interface StorageHealthStatus {
   current: string;           // Name of currently active provider
-  primary: boolean;          // Health status of primary provider (MinIO)
-  fallback: boolean | null;  // Health status of fallback provider (null if disabled)
+  providers: {
+    s3?: boolean;            // Health status of S3/R2 provider (undefined if not configured)
+    minio?: boolean;         // Health status of MinIO provider (undefined if not configured)
+    local?: boolean;         // Health status of Local provider (undefined if not configured)
+  };
+  // Legacy fields for backward compatibility
+  primary: boolean;
+  fallback: boolean | null;
 }
 
 export interface StorageConfig {
