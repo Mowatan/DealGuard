@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { custodyApi } from '@/lib/api-client';
 import { useToast } from '@/components/ui/use-toast';
+import { formatNumber } from '@/lib/utils';
 
 interface CustodyActionModalProps {
   isOpen: boolean;
@@ -92,7 +93,7 @@ export function CustodyActionModal({
             <div className="p-4 bg-gray-50 rounded-lg">
               <p className="text-sm text-gray-600">Amount</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {amount} {currency || 'EGP'}
+                {formatNumber(amount)} {currency || 'EGP'}
               </p>
             </div>
           )}
