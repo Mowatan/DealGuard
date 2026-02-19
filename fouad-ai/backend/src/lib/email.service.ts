@@ -63,8 +63,11 @@ class EmailService {
    * Load and cache email template from filesystem
    */
   private async loadTemplate(templateName: string): Promise<string> {
-    // Check cache first
-    if (this.templateCache.has(templateName)) {
+    // In development, always reload templates (don't cache)
+    const skipCache = process.env.NODE_ENV === 'development';
+
+    // Check cache first (unless in development)
+    if (!skipCache && this.templateCache.has(templateName)) {
       return this.templateCache.get(templateName)!;
     }
 
@@ -79,7 +82,9 @@ class EmailService {
       );
 
       const content = await fs.readFile(templatePath, 'utf-8');
-      this.templateCache.set(templateName, content);
+      if (!skipCache) {
+        this.templateCache.set(templateName, content);
+      }
       return content;
     } catch (error) {
       console.error(`Failed to load email template ${templateName}:`, error);
@@ -97,7 +102,8 @@ class EmailService {
     let template = await this.loadTemplate(templateName);
 
     // Debug: Log variables being replaced
-    console.log(`📧 Rendering template "${templateName}" with variables:`, Object.keys(variables));
+    console.log(`📧 Rendering template "${templateName}" with variables:`);
+    console.log(`   Variables provided:`, Object.keys(variables).join(', '));
 
     // Replace all {{variable}} placeholders
     Object.entries(variables).forEach(([key, value]) => {

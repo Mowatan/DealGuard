@@ -182,13 +182,28 @@ export default function InvitationAcceptancePage() {
               <AlertCircle className="h-6 w-6" />
               <CardTitle>Invalid Invitation</CardTitle>
             </div>
+            <CardDescription className="mt-2">
+              This invitation cannot be accessed
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 mb-4">
+          <CardContent className="space-y-4">
+            <p className="text-gray-600">
               {error || 'This invitation link is invalid or has expired.'}
             </p>
-            <Button onClick={() => router.push('/')} className="w-full">
-              Go to Home
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-amber-800">
+                <strong>Common reasons:</strong>
+                <br />• The invitation link has expired
+                <br />• You've already responded to this invitation
+                <br />• The deal creator cancelled the invitation
+              </p>
+            </div>
+            <Button
+              onClick={() => router.push('/')}
+              className="w-full"
+              size="lg"
+            >
+              Return to Home Page
             </Button>
           </CardContent>
         </Card>
