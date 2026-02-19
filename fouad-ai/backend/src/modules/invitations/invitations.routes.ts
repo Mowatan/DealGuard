@@ -2,7 +2,8 @@ import { FastifyInstance } from 'fastify';
 import * as dealsService from '../deals/deals.service';
 import { authenticate } from '../../middleware/auth';
 import { prisma } from '../../lib/prisma';
-import { InvitationStatus } from '@prisma/client';
+import { InvitationStatus, DealStatus } from '@prisma/client';
+import { createAuditLog } from '../../lib/audit';
 
 /**
  * Invitation acceptance routes
@@ -156,11 +157,11 @@ export async function invitationsRoutes(server: FastifyInstance) {
 
         const allAccepted = allParties.every((p) => p.invitationStatus === InvitationStatus.ACCEPTED);
 
-        // If all parties accepted, update deal status to ACTIVE
-        if (allAccepted && party.deal.status === 'PENDING_ACCEPTANCE') {
+        // If all parties accepted, update deal status to ACCEPTED
+        if (allAccepted && party.deal.status === DealStatus.INVITED) {
           await prisma.deal.update({
             where: { id: party.dealId },
-            data: { status: 'ACTIVE' },
+            data: { status: DealStatus.ACCEPTED },
           });
 
           // Create audit log for deal activation
@@ -170,7 +171,7 @@ export async function invitationsRoutes(server: FastifyInstance) {
             actor: 'SYSTEM',
             entityType: 'Deal',
             entityId: party.dealId,
-            newState: { status: 'ACTIVE' },
+            newState: { status: DealStatus.ACCEPTED },
             metadata: {
               reason: 'All parties accepted invitations',
             },
