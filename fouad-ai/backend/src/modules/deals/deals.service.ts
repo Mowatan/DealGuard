@@ -7,6 +7,23 @@ import crypto from 'crypto';
 import * as progressService from '../progress/progress.service';
 import { canUserAccessDeal } from '../../lib/authorization';
 
+/**
+ * Get the frontend base URL from environment
+ * PRODUCTION: Must be configured via FRONTEND_URL env var
+ * DEVELOPMENT: Falls back to localhost
+ */
+function getFrontendUrl(): string {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const url = process.env.FRONTEND_URL || (isProduction ? '' : 'http://localhost:3000');
+
+  if (!url && isProduction) {
+    console.error('❌ FRONTEND_URL is not configured in production!');
+    return 'https://dealguard.org'; // Safe fallback for production
+  }
+
+  return url;
+}
+
 interface CreateDealParams {
   title: string;
   description?: string;
@@ -181,7 +198,7 @@ export async function createDeal(params: CreateDealParams) {
 
   const creatorName = params.creatorName || 'A DealGuard user';
   const creatorEmail = params.creatorEmail || '';
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const baseUrl = getFrontendUrl();
 
   for (const party of deal.parties) {
     // Check if this party is the creator
@@ -623,7 +640,7 @@ export async function updateDeal(
   });
 
   // Notify all parties about the change
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const baseUrl = getFrontendUrl();
   for (const party of deal.parties) {
     await emailSendingQueue.add(
       'send-deal-amended',
@@ -818,7 +835,7 @@ export async function proposeDealAmendment(
   });
 
   // Notify all parties about the proposed amendment
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const baseUrl = getFrontendUrl();
   for (const party of deal.parties) {
     const respondLink = `${baseUrl}/amendments/${amendment.id}`;
 
@@ -902,7 +919,7 @@ export async function proposeDealDeletion(
   });
 
   // Notify all parties about the proposed deletion
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const baseUrl = getFrontendUrl();
   for (const party of deal.parties) {
     const respondLink = `${baseUrl}/deletion-requests/${deletionRequest.id}`;
 
@@ -1151,7 +1168,7 @@ async function executeAmendment(amendmentId: string) {
   });
 
   // Notify all parties
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const baseUrl = getFrontendUrl();
   for (const party of amendment.deal.parties) {
     await emailSendingQueue.add(
       'send-amendment-approved',

@@ -30,23 +30,25 @@ export class StorageService {
   private fallbackEnabled: boolean;
 
   constructor() {
+    const isProduction = process.env.NODE_ENV === 'production';
+
     // Load configuration from environment
     const config: StorageConfig = {
-      minioEndpoint: process.env.MINIO_ENDPOINT || 'localhost',
+      minioEndpoint: process.env.MINIO_ENDPOINT || (isProduction ? '' : 'localhost'),
       minioPort: parseInt(process.env.MINIO_PORT || '9000', 10),
-      minioAccessKey: process.env.MINIO_ACCESS_KEY || 'admin',
-      minioSecretKey: process.env.MINIO_SECRET_KEY || 'adminpassword',
+      minioAccessKey: process.env.MINIO_ACCESS_KEY || (isProduction ? '' : 'admin'),
+      minioSecretKey: process.env.MINIO_SECRET_KEY || (isProduction ? '' : 'adminpassword'),
       minioUseSSL: process.env.MINIO_USE_SSL === 'true',
       fallbackEnabled: process.env.STORAGE_FALLBACK_ENABLED !== 'false', // Default to true
       localStoragePath: process.env.STORAGE_LOCAL_PATH || '/app/uploads',
-      publicUrl: process.env.PUBLIC_URL || 'http://localhost:4000',
+      publicUrl: process.env.PUBLIC_URL || (isProduction ? '' : 'http://localhost:4000'),
       documentsBucket: process.env.MINIO_BUCKET_DOCUMENTS || 'fouad-documents',
       evidenceBucket: process.env.MINIO_BUCKET_EVIDENCE || 'fouad-evidence',
     };
 
     this.fallbackEnabled = config.fallbackEnabled;
 
-    // Priority 1: Try S3/R2 if credentials are available
+    // Priority 1: Try S3/R2 if credentials are available (PRODUCTION PRIMARY)
     if (process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY) {
       try {
         this.s3Provider = new S3StorageProvider(config);
@@ -57,8 +59,8 @@ export class StorageService {
       }
     }
 
-    // Priority 2: MinIO (if S3 not available)
-    if (!this.s3Provider) {
+    // Priority 2: MinIO (development/staging only - requires credentials)
+    if (!this.s3Provider && config.minioEndpoint && config.minioAccessKey) {
       try {
         this.minioProvider = new MinioStorageProvider(config);
         this.currentProvider = this.minioProvider;

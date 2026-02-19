@@ -6,6 +6,7 @@ import { promises as fs } from 'fs';
 import * as path from 'path';
 import { prisma } from './lib/prisma';
 import { storage } from './lib/storage';
+import { validateEnvironment, printEnvironmentStatus } from './lib/env-validator';
 import { dealsRoutes } from './modules/deals/deals.routes';
 import { contractsRoutes } from './modules/contracts/contracts.routes';
 import { evidenceRoutes } from './modules/evidence/evidence.routes';
@@ -41,9 +42,26 @@ const server = Fastify({
 
 async function start() {
   try {
+    // Validate environment variables before starting
+    const validation = validateEnvironment();
+    if (!validation.valid) {
+      console.error('❌ Cannot start server: Environment validation failed');
+      process.exit(1);
+    }
+
+    printEnvironmentStatus();
+
     // Register plugins with multiple CORS origins support
-    // Check both CORS_ORIGIN (Railway) and FRONTEND_URL (legacy)
-    const corsEnv = process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:3000';
+    // PRODUCTION: Use CORS_ORIGIN or FRONTEND_URL from environment
+    // DEVELOPMENT: Falls back to localhost
+    const isProduction = process.env.NODE_ENV === 'production';
+    const corsEnv = process.env.CORS_ORIGIN || process.env.FRONTEND_URL || (isProduction ? '' : 'http://localhost:3000');
+
+    if (!corsEnv && isProduction) {
+      server.log.error('❌ CRITICAL: CORS_ORIGIN or FRONTEND_URL not configured in production!');
+      throw new Error('CORS_ORIGIN or FRONTEND_URL must be configured in production');
+    }
+
     const allowedOrigins = corsEnv
       .split(',')
       .map(origin => origin.trim())

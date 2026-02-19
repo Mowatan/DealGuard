@@ -1,8 +1,46 @@
 import { Queue, Worker, Job } from 'bullmq';
 import Redis from 'ioredis';
 
-const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+// PRODUCTION: Must use REDIS_URL from environment (Railway provides this)
+// DEVELOPMENT: Falls back to localhost only in non-production
+const isProduction = process.env.NODE_ENV === 'production';
+const redisUrl = process.env.REDIS_URL || (isProduction ? '' : 'redis://localhost:6379');
+
+if (!redisUrl) {
+  throw new Error('REDIS_URL environment variable is required in production');
+}
+
+const connection = new Redis(redisUrl, {
   maxRetriesPerRequest: null,
+  enableOfflineQueue: false, // Fail fast in production if Redis is down
+  connectTimeout: 10000,
+  retryStrategy(times) {
+    const delay = Math.min(times * 50, 2000);
+    console.log(`Redis reconnection attempt ${times}, waiting ${delay}ms`);
+    return delay;
+  },
+});
+
+// Handle Redis connection events
+connection.on('connect', () => {
+  console.log('✅ Redis: Connected successfully');
+});
+
+connection.on('ready', () => {
+  console.log('✅ Redis: Ready to accept commands');
+});
+
+connection.on('error', (error) => {
+  console.error('❌ Redis connection error:', error.message);
+  // Don't crash the app, just log the error
+});
+
+connection.on('close', () => {
+  console.warn('⚠️  Redis: Connection closed');
+});
+
+connection.on('reconnecting', () => {
+  console.log('🔄 Redis: Attempting to reconnect...');
 });
 
 // Queue definitions
