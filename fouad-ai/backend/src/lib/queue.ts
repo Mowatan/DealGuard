@@ -71,10 +71,15 @@ export const blockchainWorker = new Worker(
   async (job: Job) => {
     const { dealId, eventType, eventId, dataHash } = job.data;
     console.log(`Anchoring ${eventType} for deal ${dealId}`);
-    
+
     const { anchorToBlockchain } = await import('../modules/blockchain/blockchain.service');
-    await anchorToBlockchain(dealId, eventType, eventId, dataHash);
-    
+    const result = await anchorToBlockchain(dealId, eventType, eventId, dataHash);
+
+    if (!result) {
+      console.log(`Blockchain service unavailable - job ${job.id} completed without anchoring`);
+      return { skipped: true };
+    }
+
     return { success: true };
   },
   { connection }

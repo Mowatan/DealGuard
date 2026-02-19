@@ -20,33 +20,38 @@ class BlockchainService {
     const contractAddress = process.env.ANCHOR_CONTRACT_ADDRESS;
 
     if (!rpcUrl || !privateKey || !contractAddress) {
+      console.warn('⚠️  Blockchain service: Configuration incomplete - running in disabled mode');
       this.provider = null as any;
       this.wallet = null as any;
       this.contract = null as any;
       return;
     }
 
-    this.provider = new ethers.JsonRpcProvider(rpcUrl);
-    this.wallet = new ethers.Wallet(privateKey, this.provider);
-    this.contract = new ethers.Contract(
-      contractAddress,
-      ANCHOR_REGISTRY_ABI,
-      this.wallet
-    );
+    try {
+      this.provider = new ethers.JsonRpcProvider(rpcUrl);
+      this.wallet = new ethers.Wallet(privateKey, this.provider);
+      this.contract = new ethers.Contract(
+        contractAddress,
+        ANCHOR_REGISTRY_ABI,
+        this.wallet
+      );
+      console.log('✅ Blockchain service initialized');
+    } catch (error: any) {
+      console.warn('⚠️  Blockchain service: Failed to initialize -', error.message);
+      console.warn('   Blockchain anchoring will be disabled');
+      this.provider = null as any;
+      this.wallet = null as any;
+      this.contract = null as any;
+    }
   }
 
   async anchorEvent(
     dealId: string,
     eventType: string,
     dataHash: string
-  ): Promise<{ txHash: string; blockNumber: number }> {
-    if (!this.contract) {
-      // Simulate anchoring for development
-      console.log(`[SIMULATED] Anchoring: ${eventType} for deal ${dealId}`);
-      return {
-        txHash: `0x${Math.random().toString(16).substring(2)}`,
-        blockNumber: Math.floor(Math.random() * 1000000),
-      };
+  ): Promise<{ txHash: string; blockNumber: number } | null> {
+    if (!this.contract || !this.wallet || !this.provider) {
+      return null;
     }
 
     const tx = await this.contract.anchorEvent(dealId, eventType, dataHash);
@@ -58,10 +63,9 @@ class BlockchainService {
     };
   }
 
-  async verifyAnchor(anchorId: number, dataHash: string): Promise<boolean> {
-    if (!this.contract) {
-      console.log(`[SIMULATED] Verifying anchor ${anchorId}`);
-      return true; // Simulate successful verification
+  async verifyAnchor(anchorId: number, dataHash: string): Promise<boolean | null> {
+    if (!this.contract || !this.wallet || !this.provider) {
+      return null;
     }
 
     return this.contract.verifyAnchor(anchorId, dataHash);
@@ -77,6 +81,15 @@ export async function anchorToBlockchain(
   dataHash: string
 ) {
   try {
+    // Submit to blockchain
+    const result = await blockchainService.anchorEvent(dealId, eventType, dataHash);
+
+    // If blockchain service is unavailable, return null
+    if (!result) {
+      console.log(`⚠️  Blockchain service unavailable - skipping anchor for ${eventType}`);
+      return null;
+    }
+
     // Create pending anchor record
     const anchor = await prisma.blockchainAnchor.create({
       data: {
@@ -84,8 +97,12 @@ export async function anchorToBlockchain(
         eventType,
         eventId,
         dataHash,
-        status: AnchorStatus.PENDING,
+        status: AnchorStatus.CONFIRMED,
+        txHash: result.txHash,
+        blockNumber: result.blockNumber,
         network: process.env.ETHEREUM_NETWORK || 'sepolia',
+        submittedAt: new Date(),
+        confirmedAt: new Date(),
         metadata: {
           dealId,
           eventType,
@@ -95,27 +112,12 @@ export async function anchorToBlockchain(
       },
     });
 
-    // Submit to blockchain
-    const result = await blockchainService.anchorEvent(dealId, eventType, dataHash);
-
-    // Update anchor with transaction details
-    await prisma.blockchainAnchor.update({
-      where: { id: anchor.id },
-      data: {
-        status: AnchorStatus.CONFIRMED,
-        txHash: result.txHash,
-        blockNumber: result.blockNumber,
-        submittedAt: new Date(),
-        confirmedAt: new Date(),
-      },
-    });
-
     console.log(`✅ Anchored ${eventType} to blockchain: ${result.txHash}`);
     return anchor;
   } catch (error) {
     console.error('Blockchain anchoring error:', error);
 
-    // Mark as failed
+    // Mark as failed if we have a pending record
     await prisma.blockchainAnchor.updateMany({
       where: {
         dealId,
