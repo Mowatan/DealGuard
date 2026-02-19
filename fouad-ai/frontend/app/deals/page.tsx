@@ -74,13 +74,29 @@ export default function DealsPage() {
   };
 
   const statusColors: Record<string, string> = {
-    DRAFT: 'bg-gray-100 text-gray-700',
-    PROPOSED: 'bg-blue-100 text-blue-700',
-    ACCEPTED_BY_ALL: 'bg-green-100 text-green-700',
-    SIGNED_RECORDED: 'bg-purple-100 text-purple-700',
-    FUNDED_VERIFIED: 'bg-indigo-100 text-indigo-700',
-    IN_VERIFICATION: 'bg-yellow-100 text-yellow-700',
-    CLOSED: 'bg-slate-100 text-slate-700',
+    CREATED: 'bg-yellow-100 text-yellow-700',
+    INVITED: 'bg-blue-100 text-blue-700',
+    ACCEPTED: 'bg-green-100 text-green-700',
+    FUNDED: 'bg-purple-100 text-purple-700',
+    IN_PROGRESS: 'bg-indigo-100 text-indigo-700',
+    READY_TO_RELEASE: 'bg-cyan-100 text-cyan-700',
+    RELEASED: 'bg-teal-100 text-teal-700',
+    COMPLETED: 'bg-green-200 text-green-800',
+    DISPUTED: 'bg-red-100 text-red-700',
+    CANCELLED: 'bg-gray-100 text-gray-700',
+  };
+
+  const statusLabels: Record<string, string> = {
+    CREATED: 'Pending Approval',
+    INVITED: 'Invitations Sent',
+    ACCEPTED: 'Active',
+    FUNDED: 'Funded',
+    IN_PROGRESS: 'In Progress',
+    READY_TO_RELEASE: 'Ready to Release',
+    RELEASED: 'Released',
+    COMPLETED: 'Completed',
+    DISPUTED: 'Disputed',
+    CANCELLED: 'Cancelled',
   };
 
   if (!isLoaded || loading) {
@@ -135,45 +151,53 @@ export default function DealsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {deals.map((deal) => (
-              <Link
-                key={deal.id}
-                href={`/deals/${deal.id}`}
-                className="block bg-white rounded-lg shadow-sm border border-slate-200 p-6 hover:border-slate-300 hover:shadow transition"
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-900">
-                      {deal.title}
-                    </h3>
-                    <p className="text-sm text-slate-500">{deal.dealNumber}</p>
-                  </div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      statusColors[deal.status] || 'bg-gray-100 text-gray-700'
-                    }`}
-                  >
-                    {deal.status.replace(/_/g, ' ')}
-                  </span>
-                </div>
+            {deals.map((deal) => {
+              const statusColor = statusColors[deal.status] || 'bg-gray-100 text-gray-700';
+              const statusLabel = statusLabels[deal.status] || deal.status.replace(/_/g, ' ');
+              const pendingParties = deal.parties?.filter((p: any) => p.invitationStatus === 'PENDING').length || 0;
 
-                <div className="flex gap-6 text-sm text-slate-600">
-                  <div>
-                    <strong>{deal.parties.length}</strong> parties
+              return (
+                <Link
+                  key={deal.id}
+                  href={`/deals/${deal.id}`}
+                  className="block bg-white rounded-lg shadow-sm border border-slate-200 p-6 hover:border-slate-300 hover:shadow transition"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900">
+                        {deal.title}
+                      </h3>
+                      <p className="text-sm text-slate-500">{deal.dealNumber}</p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                      {statusLabel}
+                    </span>
                   </div>
-                  <div>
-                    <strong>{deal._count.contracts}</strong> contracts
-                  </div>
-                  <div>
-                    <strong>{deal._count.evidenceItems}</strong> evidence items
-                  </div>
-                </div>
 
-                <div className="mt-3 text-xs text-slate-500">
-                  Created {new Date(deal.createdAt).toLocaleDateString()}
-                </div>
-              </Link>
-            ))}
+                  {deal.status === 'CREATED' && pendingParties > 0 && (
+                    <p className="text-sm text-yellow-600 mb-3">
+                      Waiting for {pendingParties} {pendingParties === 1 ? 'party' : 'parties'} to accept
+                    </p>
+                  )}
+
+                  <div className="flex gap-6 text-sm text-slate-600">
+                    <div>
+                      <strong>{deal.parties?.length || 0}</strong> parties
+                    </div>
+                    <div>
+                      <strong>{deal._count?.contracts || 0}</strong> contracts
+                    </div>
+                    <div>
+                      <strong>{deal._count?.evidenceItems || 0}</strong> evidence items
+                    </div>
+                  </div>
+
+                  <div className="mt-3 text-xs text-slate-500">
+                    Created {new Date(deal.createdAt).toLocaleDateString()}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
