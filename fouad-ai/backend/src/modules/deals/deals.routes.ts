@@ -251,6 +251,71 @@ export async function dealsRoutes(server: FastifyInstance) {
     }
   );
 
+  // Accept party invitation (authenticated)
+  server.post(
+    '/:dealId/parties/:partyId/accept',
+    {
+      preHandler: [authenticate],
+    },
+    async (request, reply) => {
+      const { dealId, partyId } = request.params as { dealId: string; partyId: string };
+
+      try {
+        const result = await dealService.acceptPartyInvitation({
+          dealId,
+          partyId,
+          userId: request.user!.id,
+        });
+
+        return result;
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('Unauthorized')) {
+          return reply.code(403).send({ error: error.message });
+        }
+        if (error instanceof Error) {
+          return reply.code(400).send({ error: error.message });
+        }
+        throw error;
+      }
+    }
+  );
+
+  // Cancel deal (creator only, before acceptance)
+  server.post(
+    '/:id/cancel',
+    {
+      preHandler: [authenticate],
+    },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const { reason } = request.body as { reason: string };
+
+      if (!reason) {
+        return reply.code(400).send({ error: 'Cancellation reason is required' });
+      }
+
+      try {
+        const result = await dealService.cancelDeal({
+          dealId: id,
+          userId: request.user!.id,
+          reason,
+        });
+        return result;
+      } catch (error) {
+        if (error instanceof Error) {
+          if (error.message.includes('Unauthorized')) {
+            return reply.code(403).send({ error: error.message });
+          }
+          if (error.message.includes('cannot be cancelled')) {
+            return reply.code(400).send({ error: error.message });
+          }
+          return reply.code(400).send({ error: error.message });
+        }
+        throw error;
+      }
+    }
+  );
+
   // ============================================================================
   // DEAL AMENDMENT & DELETION ROUTES
   // ============================================================================

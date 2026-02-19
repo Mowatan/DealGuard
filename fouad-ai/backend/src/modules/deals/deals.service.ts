@@ -86,6 +86,7 @@ export async function createDeal(params: CreateDealParams) {
       description: params.description,
       emailAddress,
       status: DealStatus.CREATED,
+      creatorId: params.userId, // Track deal creator
       transactionType: params.transactionType || 'SIMPLE',
       currency: params.currency || 'EGP',
       totalAmount: params.totalAmount,
@@ -274,17 +275,26 @@ export async function listDeals(options: {
   const { status, page, limit, userId } = options;
   const skip = (page - 1) * limit;
 
-  // Build where clause - filter by status AND user membership
+  // Build where clause - include deals where user is creator OR party member
   const where: any = {
-    parties: {
-      some: {
-        members: {
+    OR: [
+      // User is the deal creator
+      {
+        creatorId: userId,
+      },
+      // User is a member of a party in the deal
+      {
+        parties: {
           some: {
-            userId: userId,
+            members: {
+              some: {
+                userId: userId,
+              },
+            },
           },
         },
       },
-    },
+    ],
   };
 
   // Add optional status filter
@@ -1402,5 +1412,198 @@ export async function resolveAmendmentDispute(
         },
       },
     }),
+  };
+}
+
+/**
+ * Accept party invitation and check if all parties have accepted
+ */
+export async function acceptPartyInvitation(params: {
+  dealId: string;
+  partyId: string;
+  userId: string;
+}) {
+  const { dealId, partyId, userId } = params;
+
+  // Get the party and verify access
+  const party = await prisma.party.findUnique({
+    where: { id: partyId },
+    include: {
+      deal: {
+        include: {
+          parties: true,
+        },
+      },
+    },
+  });
+
+  if (!party || party.dealId !== dealId) {
+    throw new Error('Party not found');
+  }
+
+  if (party.invitationStatus === InvitationStatus.ACCEPTED) {
+    throw new Error('Invitation already accepted');
+  }
+
+  // Update party status to ACCEPTED
+  await prisma.party.update({
+    where: { id: partyId },
+    data: {
+      invitationStatus: InvitationStatus.ACCEPTED,
+      respondedAt: new Date(),
+    },
+  });
+
+  // Check if ALL parties have now accepted
+  const allParties = party.deal.parties;
+  const allAccepted = allParties.every(
+    (p) => p.id === partyId || p.invitationStatus === InvitationStatus.ACCEPTED
+  );
+
+  // If all parties accepted, update deal status to ACCEPTED
+  if (allAccepted) {
+    await prisma.deal.update({
+      where: { id: dealId },
+      data: {
+        status: DealStatus.ACCEPTED,
+        allPartiesConfirmed: true,
+      },
+    });
+
+    // Create audit log
+    await createAuditLog({
+      dealId,
+      eventType: 'DEAL_ACTIVATED',
+      actor: userId,
+      entityType: 'Deal',
+      entityId: dealId,
+      newState: {
+        status: DealStatus.ACCEPTED,
+        allPartiesConfirmed: true,
+      },
+    });
+
+    // Send "deal active" emails to all parties
+    const baseUrl = getFrontendUrl();
+    for (const p of allParties) {
+      await emailSendingQueue.add(
+        'send-deal-active',
+        {
+          to: p.contactEmail,
+          subject: `Deal ${party.deal.dealNumber} Is Now Active`,
+          template: 'deal-active',
+          variables: {
+            recipientName: p.name,
+            dealNumber: party.deal.dealNumber,
+            dealTitle: party.deal.title,
+            dealUrl: `${baseUrl}/deals/${dealId}`,
+          },
+          dealId,
+          priority: 5,
+        },
+        { priority: 5 }
+      );
+    }
+  }
+
+  // Create audit log for party acceptance
+  await createAuditLog({
+    dealId,
+    eventType: 'PARTY_ACCEPTED',
+    actor: userId,
+    entityType: 'Party',
+    entityId: partyId,
+    newState: {
+      invitationStatus: InvitationStatus.ACCEPTED,
+    },
+  });
+
+  return {
+    success: true,
+    allPartiesAccepted: allAccepted,
+    dealStatus: allAccepted ? DealStatus.ACCEPTED : party.deal.status,
+  };
+}
+
+/**
+ * Cancel deal (creator only, before all parties accept)
+ */
+export async function cancelDeal(params: {
+  dealId: string;
+  userId: string;
+  reason: string;
+}) {
+  const { dealId, userId, reason } = params;
+
+  // Get deal and verify creator
+  const deal = await prisma.deal.findUnique({
+    where: { id: dealId },
+    include: {
+      parties: true,
+    },
+  });
+
+  if (!deal) {
+    throw new Error('Deal not found');
+  }
+
+  // Only creator can cancel
+  if (deal.creatorId !== userId) {
+    throw new Error('Unauthorized: Only the deal creator can cancel the deal');
+  }
+
+  // Can only cancel if not yet accepted by all parties
+  if (deal.status === DealStatus.ACCEPTED || deal.allPartiesConfirmed) {
+    throw new Error('Deal cannot be cancelled after all parties have accepted');
+  }
+
+  // Update deal status
+  await prisma.deal.update({
+    where: { id: dealId },
+    data: {
+      status: DealStatus.CANCELLED,
+      closedAt: new Date(),
+    },
+  });
+
+  // Create audit log
+  await createAuditLog({
+    dealId,
+    eventType: 'DEAL_CANCELLED',
+    actor: userId,
+    entityType: 'Deal',
+    entityId: dealId,
+    newState: {
+      status: DealStatus.CANCELLED,
+      cancellationReason: reason,
+    },
+  });
+
+  // Send cancellation emails to all parties
+  const baseUrl = getFrontendUrl();
+  for (const party of deal.parties) {
+    await emailSendingQueue.add(
+      'send-deal-cancelled',
+      {
+        to: party.contactEmail,
+        subject: `Deal ${deal.dealNumber} Has Been Cancelled`,
+        template: 'deal-cancelled',
+        variables: {
+          recipientName: party.name,
+          dealNumber: deal.dealNumber,
+          dealTitle: deal.title,
+          cancellationReason: reason,
+          dealUrl: `${baseUrl}/deals/${dealId}`,
+        },
+        dealId,
+        priority: 5,
+      },
+      { priority: 5 }
+    );
+  }
+
+  return {
+    success: true,
+    message: 'Deal cancelled successfully',
   };
 }
