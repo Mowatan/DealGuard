@@ -251,11 +251,28 @@ export async function listDeals(options: {
   status?: DealStatus;
   page: number;
   limit: number;
+  userId: string; // REQUIRED: Filter deals by user membership
 }) {
-  const { status, page, limit } = options;
+  const { status, page, limit, userId } = options;
   const skip = (page - 1) * limit;
 
-  const where = status ? { status } : {};
+  // Build where clause - filter by status AND user membership
+  const where: any = {
+    parties: {
+      some: {
+        members: {
+          some: {
+            userId: userId,
+          },
+        },
+      },
+    },
+  };
+
+  // Add optional status filter
+  if (status) {
+    where.status = status;
+  }
 
   const [deals, total] = await Promise.all([
     prisma.deal.findMany({
@@ -287,7 +304,47 @@ export async function listDeals(options: {
   };
 }
 
-export async function getDealById(id: string) {
+/**
+ * Check if a user has access to a deal (is a party member)
+ * Admins and case officers have access to all deals
+ */
+export async function canUserAccessDeal(dealId: string, userId: string): Promise<boolean> {
+  // Get user to check role
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+
+  if (!user) {
+    return false;
+  }
+
+  // Admins and case officers can access all deals
+  if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN' || user.role === 'CASE_OFFICER') {
+    return true;
+  }
+
+  // Check if user is a member of any party in this deal
+  const partyMember = await prisma.partyMember.findFirst({
+    where: {
+      userId: userId,
+      party: {
+        dealId: dealId,
+      },
+    },
+  });
+
+  return partyMember !== null;
+}
+
+export async function getDealById(id: string, userId: string) {
+  // First check if user has access to this deal
+  const hasAccess = await canUserAccessDeal(id, userId);
+
+  if (!hasAccess) {
+    return null; // Return null to indicate not found (don't reveal if deal exists)
+  }
+
   return prisma.deal.findUnique({
     where: { id },
     include: {
@@ -330,8 +387,18 @@ export async function updateDealStatus(
   newStatus: DealStatus,
   actorId: string
 ) {
+  // Check if user has access to this deal (case officers and above only)
+  const user = await prisma.user.findUnique({
+    where: { id: actorId },
+    select: { role: true },
+  });
+
+  if (!user || (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN' && user.role !== 'CASE_OFFICER')) {
+    throw new Error('Unauthorized: Only case officers and above can update deal status');
+  }
+
   const deal = await prisma.deal.findUnique({ where: { id: dealId } });
-  
+
   if (!deal) {
     throw new Error('Deal not found');
   }
@@ -357,7 +424,14 @@ export async function updateDealStatus(
   return updated;
 }
 
-export async function getDealAuditTrail(dealId: string) {
+export async function getDealAuditTrail(dealId: string, userId: string) {
+  // Check if user has access to this deal
+  const hasAccess = await canUserAccessDeal(dealId, userId);
+
+  if (!hasAccess) {
+    throw new Error('Unauthorized: You do not have access to this deal');
+  }
+
   return getAuditTrail(dealId);
 }
 
@@ -530,6 +604,13 @@ export async function updateDeal(
   },
   userId: string
 ) {
+  // Check if user has access to this deal
+  const hasAccess = await canUserAccessDeal(dealId, userId);
+
+  if (!hasAccess) {
+    throw new Error('Unauthorized: You do not have access to this deal');
+  }
+
   // Check if any party has agreed
   const hasAgreed = await hasAnyPartyAgreed(dealId);
 
@@ -603,6 +684,13 @@ export async function updateDeal(
  * Delete deal (Phase 1: Unilateral if no agreements)
  */
 export async function deleteDeal(dealId: string, userId: string, reason?: string) {
+  // Check if user has access to this deal
+  const hasAccess = await canUserAccessDeal(dealId, userId);
+
+  if (!hasAccess) {
+    throw new Error('Unauthorized: You do not have access to this deal');
+  }
+
   // Check if any party has agreed
   const hasAgreed = await hasAnyPartyAgreed(dealId);
 
@@ -670,7 +758,14 @@ export async function deleteDeal(dealId: string, userId: string, reason?: string
 /**
  * Get all amendments for a deal
  */
-export async function getDealAmendments(dealId: string) {
+export async function getDealAmendments(dealId: string, userId: string) {
+  // Check if user has access to this deal
+  const hasAccess = await canUserAccessDeal(dealId, userId);
+
+  if (!hasAccess) {
+    throw new Error('Unauthorized: You do not have access to this deal');
+  }
+
   const amendments = await prisma.dealAmendment.findMany({
     where: { dealId },
     include: {
@@ -708,6 +803,13 @@ export async function proposeDealAmendment(
   userId: string,
   userName: string
 ) {
+  // Check if user has access to this deal
+  const hasAccess = await canUserAccessDeal(dealId, userId);
+
+  if (!hasAccess) {
+    throw new Error('Unauthorized: You do not have access to this deal');
+  }
+
   // Verify at least one party has agreed
   const hasAgreed = await hasAnyPartyAgreed(dealId);
 
@@ -785,6 +887,13 @@ export async function proposeDealDeletion(
   userId: string,
   userName: string
 ) {
+  // Check if user has access to this deal
+  const hasAccess = await canUserAccessDeal(dealId, userId);
+
+  if (!hasAccess) {
+    throw new Error('Unauthorized: You do not have access to this deal');
+  }
+
   // Verify at least one party has agreed
   const hasAgreed = await hasAnyPartyAgreed(dealId);
 

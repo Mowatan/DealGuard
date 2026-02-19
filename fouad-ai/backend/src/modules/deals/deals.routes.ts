@@ -109,7 +109,7 @@ export async function dealsRoutes(server: FastifyInstance) {
     }
   });
 
-  // List deals (all authenticated users)
+  // List deals (all authenticated users - filtered by user membership)
   server.get(
     '/',
     {
@@ -121,11 +121,12 @@ export async function dealsRoutes(server: FastifyInstance) {
       status: status && status !== 'undefined' ? status : undefined,
       page: parseInt(page),
       limit: parseInt(limit),
+      userId: request.user!.id, // Filter by current user
     });
     return deals;
   });
 
-  // Get deal by ID (all authenticated users)
+  // Get deal by ID (all authenticated users - with authorization check)
   server.get(
     '/:id',
     {
@@ -133,12 +134,12 @@ export async function dealsRoutes(server: FastifyInstance) {
     },
     async (request, reply) => {
     const { id } = request.params as { id: string };
-    const deal = await dealService.getDealById(id);
-    
+    const deal = await dealService.getDealById(id, request.user!.id);
+
     if (!deal) {
       return reply.code(404).send({ error: 'Deal not found' });
     }
-    
+
     return deal;
   });
 
@@ -156,7 +157,7 @@ export async function dealsRoutes(server: FastifyInstance) {
     return deal;
   });
 
-  // Get deal audit trail (all authenticated users)
+  // Get deal audit trail (all authenticated users - with authorization check)
   server.get(
     '/:id/audit',
     {
@@ -164,8 +165,15 @@ export async function dealsRoutes(server: FastifyInstance) {
     },
     async (request, reply) => {
     const { id } = request.params as { id: string };
-    const audit = await dealService.getDealAuditTrail(id);
-    return audit;
+    try {
+      const audit = await dealService.getDealAuditTrail(id, request.user!.id);
+      return audit;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Unauthorized')) {
+        return reply.code(403).send({ error: error.message });
+      }
+      throw error;
+    }
   });
 
   // Get invitation details by token (no auth required)
@@ -304,10 +312,13 @@ export async function dealsRoutes(server: FastifyInstance) {
       const { id } = request.params as { id: string };
 
       try {
-        const amendments = await dealService.getDealAmendments(id);
+        const amendments = await dealService.getDealAmendments(id, request.user!.id);
         return reply.code(200).send(amendments);
       } catch (error) {
         if (error instanceof Error) {
+          if (error.message.includes('Unauthorized')) {
+            return reply.code(403).send({ error: error.message });
+          }
           return reply.code(400).send({ error: error.message });
         }
         return reply.code(500).send({ error: 'Failed to fetch amendments' });
