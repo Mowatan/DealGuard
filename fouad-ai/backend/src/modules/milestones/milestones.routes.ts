@@ -12,9 +12,12 @@ export default async function milestonesRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
 
       try {
-        const milestone = await milestonesService.getMilestoneDetails(id);
+        const milestone = await milestonesService.getMilestoneDetails(id, request.user!.id);
         return reply.send(milestone);
       } catch (error: any) {
+        if (error.message.includes('Unauthorized')) {
+          return reply.code(403).send({ error: error.message });
+        }
         return reply.code(404).send({ error: error.message });
       }
     }
@@ -28,9 +31,12 @@ export default async function milestonesRoutes(fastify: FastifyInstance) {
       const { contractId } = request.params as { contractId: string };
 
       try {
-        const milestones = await milestonesService.listMilestonesByContract(contractId);
+        const milestones = await milestonesService.listMilestonesByContract(contractId, request.user!.id);
         return reply.send(milestones);
       } catch (error: any) {
+        if (error.message.includes('Unauthorized')) {
+          return reply.code(403).send({ error: error.message });
+        }
         return reply.code(500).send({ error: error.message });
       }
     }
@@ -75,9 +81,12 @@ export default async function milestonesRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
 
       try {
-        const approvals = await milestonesService.listApprovals(id);
+        const approvals = await milestonesService.listApprovals(id, request.user!.id);
         return reply.send(approvals);
       } catch (error: any) {
+        if (error.message.includes('Unauthorized')) {
+          return reply.code(403).send({ error: error.message });
+        }
         return reply.code(500).send({ error: error.message });
       }
     }

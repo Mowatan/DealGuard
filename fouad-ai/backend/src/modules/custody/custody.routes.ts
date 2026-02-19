@@ -116,7 +116,14 @@ export async function custodyRoutes(server: FastifyInstance) {
     },
     async (request, reply) => {
     const { dealId } = request.params as { dealId: string };
-    const records = await custodyService.listCustodyRecords(dealId);
-    return records;
+    try {
+      const records = await custodyService.listCustodyRecords(dealId, request.user!.id);
+      return records;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Unauthorized')) {
+        return reply.code(403).send({ error: error.message });
+      }
+      throw error;
+    }
   });
 }

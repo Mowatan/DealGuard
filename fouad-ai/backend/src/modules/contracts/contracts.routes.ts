@@ -50,12 +50,12 @@ export async function contractsRoutes(server: FastifyInstance) {
     },
     async (request, reply) => {
     const { id } = request.params as { id: string };
-    const contract = await contractService.getContractById(id);
-    
+    const contract = await contractService.getContractById(id, request.user!.id);
+
     if (!contract) {
       return reply.code(404).send({ error: 'Contract not found' });
     }
-    
+
     return contract;
   });
 
@@ -96,9 +96,16 @@ export async function contractsRoutes(server: FastifyInstance) {
     async (request, reply) => {
     const { id } = request.params as { id: string };
     const { partyId } = request.body as any;
-    
-    const acceptance = await contractService.acceptContract(id, partyId);
-    return acceptance;
+
+    try {
+      const acceptance = await contractService.acceptContract(id, partyId, request.user!.id);
+      return acceptance;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Unauthorized')) {
+        return reply.code(403).send({ error: error.message });
+      }
+      throw error;
+    }
   });
 
   // Check if contract is fully accepted (all authenticated users)
@@ -109,7 +116,14 @@ export async function contractsRoutes(server: FastifyInstance) {
     },
     async (request, reply) => {
     const { id } = request.params as { id: string };
-    const status = await contractService.checkAcceptanceStatus(id);
-    return status;
+    try {
+      const status = await contractService.checkAcceptanceStatus(id, request.user!.id);
+      return status;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Unauthorized')) {
+        return reply.code(403).send({ error: error.message });
+      }
+      throw error;
+    }
   });
 }
