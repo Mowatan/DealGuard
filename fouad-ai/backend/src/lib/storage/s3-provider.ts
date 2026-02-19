@@ -46,9 +46,9 @@ export class S3StorageProvider implements StorageProvider {
 
     this.client = new S3Client(clientConfig);
 
-    // Use S3-specific bucket names or fall back to MinIO names
-    this.documentsBucket = process.env.S3_BUCKET_DOCUMENTS || config.documentsBucket;
-    this.evidenceBucket = process.env.S3_BUCKET_EVIDENCE || config.evidenceBucket;
+    // Use S3-specific bucket names or fall back to hardcoded defaults
+    this.documentsBucket = process.env.S3_BUCKET_DOCUMENTS || 'dealguard-documents';
+    this.evidenceBucket = process.env.S3_BUCKET_EVIDENCE || 'dealguard-evidence';
 
     console.log('✅ S3StorageProvider initialized');
     console.log(`   Region: ${clientConfig.region}`);

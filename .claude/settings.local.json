@@ -98,7 +98,9 @@
       "Bash(escrow governance platform\" with emphasis on evidence-based milestones,\n     RBAC, audit trails, and blockchain anchoring Q2 2026\n   - \"Is my data secure?\": Clarified encryption + RBAC + audit trails,\n     removed unverifiable claims, emphasized hash-only blockchain notarization\n\n3. Consistency Maintained:\n   - \"AI-Assisted Workflows\" feature unchanged \\(already accurate\\)\n   - \"Blockchain Audit Trail\" remains COMING SOON / Q2 2026\n   - No claims of \"world 's first\" or unverifiable statements\n   - All existing sections \\(tiers, transaction types, roadmap\\) unchanged\n\nBuild verified: ✓ Next.js production build successful\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(tsx scripts/test-invitation-flow.ts:*)",
       "Bash(npx ts-node:*)",
-      "Bash(wsl which:*)"
+      "Bash(wsl which:*)",
+      "Bash(vercel:*)",
+      "WebFetch(domain:dealguard.org)"
     ]
   }
 }

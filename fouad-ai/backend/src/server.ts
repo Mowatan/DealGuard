@@ -11,7 +11,7 @@ import { dealsRoutes } from './modules/deals/deals.routes';
 import { contractsRoutes } from './modules/contracts/contracts.routes';
 import { evidenceRoutes } from './modules/evidence/evidence.routes';
 import { custodyRoutes } from './modules/custody/custody.routes';
-import { blockchainRoutes } from './modules/blockchain/blockchain.routes';
+// import { blockchainRoutes } from './modules/blockchain/blockchain.routes'; // DISABLED - Not needed for MVP
 import { webhookRoutes } from './modules/webhooks/webhook.routes';
 import { usersRoutes } from './modules/users/users.routes';
 import milestonesRoutes from './modules/milestones/milestones.routes';
@@ -214,7 +214,7 @@ async function start() {
     await server.register(evidenceRoutes, { prefix: '/api/evidence' });
     await server.register(custodyRoutes, { prefix: '/api/custody' });
     await server.register(custodyDocumentsRoutes, { prefix: '/api' });
-    await server.register(blockchainRoutes, { prefix: '/api/blockchain' });
+    // await server.register(blockchainRoutes, { prefix: '/api/blockchain' }); // DISABLED
     await server.register(webhookRoutes, { prefix: '/webhooks' });
     await server.register(milestonesRoutes);
     await server.register(kycRoutes);

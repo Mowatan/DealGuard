@@ -1,7 +1,7 @@
 # Production Dockerfile for DealGuard Backend (Multi-stage)
 
 # Stage 1: Build
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 # Install OpenSSL for Prisma
 RUN apk add --no-cache openssl
@@ -25,7 +25,7 @@ RUN npx prisma generate
 RUN npm run build
 
 # Stage 2: Production
-FROM node:18-alpine
+FROM node:20-alpine
 
 # Install OpenSSL for Prisma
 RUN apk add --no-cache openssl
