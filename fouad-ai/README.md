@@ -1,4 +1,4 @@
-# fouad.ai - Digital Escrow & Conditional Settlement Platform
+# dealguard.ai - Digital Escrow & Conditional Settlement Platform
 
 ## System Architecture
 
@@ -20,7 +20,7 @@ A **governance + proof layer** for asynchronous transactions. We don't automate 
    - Parties submit proof of actual disbursement
 
 3. **Evidence Intake**
-   - Each deal has dedicated email inbox (deal-{id}@fouad.ai)
+   - Each deal has dedicated email inbox (deal-{id}@dealguard.ai)
    - Parties email evidence (receipts, documents, proofs)
    - System ingests attachments, creates EvidenceItems
    - AI suggests milestone mapping
@@ -47,7 +47,7 @@ A **governance + proof layer** for asynchronous transactions. We don't automate 
 ## Project Structure
 
 ```
-fouad-ai/
+dealguard-ai/
 ├── backend/               # Node.js backend
 │   ├── src/
 │   │   ├── modules/

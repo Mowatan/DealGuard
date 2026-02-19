@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Deal Created - {{dealNumber}}</title>
+  <style>
+    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #1f2937; background-color: #f3f4f6; }
+    .email-wrapper { width: 100%; background-color: #f3f4f6; padding: 40px 20px; }
+    .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+
+    /* Header */
+    .email-header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 30px; text-align: center; }
+    .email-header h1 { margin: 0 0 8px 0; font-size: 32px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px; }
+    .email-header .tagline { margin: 0; font-size: 14px; color: #d1fae5; font-weight: 500; }
+
+    /* Content */
+    .email-content { padding: 40px 30px; }
+
+    /* Alert Badge */
+    .alert-badge { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; padding: 12px 20px; border-radius: 8px; text-align: center; margin: 0 0 30px 0; }
+    .alert-badge .icon { font-size: 32px; margin-bottom: 8px; }
+    .alert-badge h2 { margin: 0; font-size: 20px; font-weight: 600; }
+    .alert-badge p { margin: 4px 0 0 0; font-size: 14px; opacity: 0.9; }
+
+    /* Deal Details Box */
+    .deal-details { background-color: #f9fafb; border: 2px solid #e5e7eb; border-radius: 8px; padding: 24px; margin: 30px 0; }
+    .deal-details h3 { margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .detail-row { display: flex; padding: 12px 0; border-bottom: 1px solid #e5e7eb; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { flex: 0 0 40%; font-weight: 600; color: #374151; font-size: 14px; }
+    .detail-value { flex: 1; color: #6b7280; font-size: 14px; }
+    .detail-value strong { color: #1f2937; font-weight: 700; }
+    .detail-value .highlight { color: #10b981; font-weight: 600; }
+
+    /* Service Tier Badge */
+    .tier-badge { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 5px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* CTA Button */
+    .cta-section { text-align: center; margin: 36px 0; }
+    .cta-button { display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4); transition: transform 0.2s; }
+    .cta-button:hover { transform: translateY(-2px); }
+
+    /* Footer */
+    .email-footer { background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb; }
+    .email-footer p { margin: 0 0 8px 0; font-size: 13px; color: #6b7280; line-height: 1.6; }
+    .email-footer .company-name { font-weight: 600; color: #374151; }
+
+    /* Mobile Responsive */
+    @media only screen and (max-width: 600px) {
+      .email-wrapper { padding: 20px 10px !important; }
+      .email-content { padding: 30px 20px !important; }
+      .email-header { padding: 30px 20px !important; }
+      .deal-details { padding: 20px !important; }
+      .detail-row { flex-direction: column; padding: 10px 0 !important; }
+      .detail-label { margin-bottom: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="email-wrapper">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+      <tr>
+        <td align="center">
+          <table class="email-container" cellspacing="0" cellpadding="0" border="0" width="600">
+            <!-- Header -->
+            <tr>
+              <td class="email-header">
+                <h1>DealGuard Admin</h1>
+                <p class="tagline">Platform Activity Notification</p>
+              </td>
+            </tr>
+
+            <!-- Content -->
+            <tr>
+              <td class="email-content">
+                <div class="alert-badge">
+                  <div class="icon">💼</div>
+                  <h2>New Deal Created</h2>
+                  <p>A new transaction has been created on the platform</p>
+                </div>
+
+                <div class="deal-details">
+                  <h3>Deal Information</h3>
+
+                  <div class="detail-row">
+                    <div class="detail-label">Deal Number</div>
+                    <div class="detail-value"><strong>{{dealNumber}}</strong></div>
+                  </div>
+
+                  <div class="detail-row">
+                    <div class="detail-label">Deal Title</div>
+                    <div class="detail-value"><strong>{{dealTitle}}</strong></div>
+                  </div>
+
+                  <div class="detail-row">
+                    <div class="detail-label">Service Tier</div>
+                    <div class="detail-value"><span class="tier-badge">{{serviceTier}}</span></div>
+                  </div>
+
+                  <div class="detail-row">
+                    <div class="detail-label">Transaction Value</div>
+                    <div class="detail-value"><strong class="highlight">{{currency}} {{totalAmount}}</strong></div>
+                  </div>
+
+                  <div class="detail-row">
+                    <div class="detail-label">Created By</div>
+                    <div class="detail-value">{{creatorName}}<br><span style="font-size: 12px; color: #9ca3af;">{{creatorEmail}}</span></div>
+                  </div>
+
+                  <div class="detail-row">
+                    <div class="detail-label">Number of Parties</div>
+                    <div class="detail-value">{{partiesCount}} parties</div>
+                  </div>
+
+                  <div class="detail-row">
+                    <div class="detail-label">Number of Milestones</div>
+                    <div class="detail-value">{{milestonesCount}} milestones</div>
+                  </div>
+
+                  <div class="detail-row">
+                    <div class="detail-label">Created At</div>
+                    <div class="detail-value">{{createdAt}} (Cairo time)</div>
+                  </div>
+                </div>
+
+                <div class="cta-section">
+                  <a href="https://dealguard.org/deals/{{dealId}}" class="cta-button">View Deal Details</a>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td class="email-footer">
+                <p class="company-name">DealGuard Admin Notifications</p>
+                <p>This is an automated admin notification.</p>
+                <p style="margin-top: 16px; font-size: 11px; color: #9ca3af;">
+                  &copy; 2026 DealGuard. All rights reserved.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>

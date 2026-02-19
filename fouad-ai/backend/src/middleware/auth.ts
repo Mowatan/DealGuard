@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { UserRole } from '@prisma/client';
 import { verifyToken as verifyClerkToken } from '@clerk/backend';
 import { prisma } from '../lib/prisma';
+import { emailSendingQueue } from '../lib/queue';
 import crypto from 'crypto';
 
 // Extend Fastify request to include user data
@@ -282,6 +283,27 @@ export async function authenticate(
           clerkId: true,
         },
       });
+
+      // Send admin notification for new user signup
+      const adminEmail = process.env.ADMIN_EMAIL || 'trust@dealguard.org';
+      try {
+        await emailSendingQueue.add('send-email', {
+          to: adminEmail,
+          subject: `New User Signup - ${user.email}`,
+          template: 'admin-new-user',
+          variables: {
+            userName: user.name || 'Unknown',
+            userEmail: user.email,
+            userId: user.id,
+            clerkId: user.clerkId || 'N/A',
+            signupDate: new Date().toISOString(),
+            signupTime: new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }),
+          },
+        });
+      } catch (emailError) {
+        // Log error but don't block user creation
+        request.log.error(emailError, 'Failed to send admin notification for new user signup');
+      }
     }
 
     // Attach user to request

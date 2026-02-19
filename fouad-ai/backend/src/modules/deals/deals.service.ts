@@ -263,6 +263,38 @@ export async function createDeal(params: CreateDealParams) {
     // Don't block deal creation if progress tracker fails
   }
 
+  // Send admin notification for new deal creation
+  const adminEmail = process.env.ADMIN_EMAIL || 'trust@dealguard.org';
+  try {
+    // Get creator info from database
+    const creator = await prisma.user.findUnique({
+      where: { id: params.userId },
+      select: { name: true, email: true },
+    });
+
+    await emailSendingQueue.add('send-email', {
+      to: adminEmail,
+      subject: `New Deal Created - ${deal.dealNumber}`,
+      template: 'admin-new-deal',
+      variables: {
+        dealNumber: deal.dealNumber,
+        dealTitle: deal.title,
+        dealId: deal.id,
+        creatorName: creator?.name || params.creatorName || 'Unknown',
+        creatorEmail: creator?.email || params.creatorEmail || 'Unknown',
+        serviceTier: deal.serviceTier,
+        totalAmount: deal.totalAmount?.toString() || 'TBD',
+        currency: deal.currency,
+        partiesCount: deal.parties.length,
+        milestonesCount: params.milestones?.length || 0,
+        createdAt: new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }),
+      },
+    });
+  } catch (emailError) {
+    console.error('Failed to send admin notification for new deal creation:', emailError);
+    // Don't block deal creation if notification fails
+  }
+
   return deal;
 }
 
