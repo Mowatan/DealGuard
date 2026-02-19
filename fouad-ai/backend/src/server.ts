@@ -20,6 +20,7 @@ import disputesRoutes from './modules/disputes/disputes.routes';
 import { custodyDocumentsRoutes } from './modules/custody-documents/custody-documents.routes';
 import { progressRoutes } from './modules/progress/progress.routes';
 import { testCorsRoutes } from './modules/test/test-cors.routes';
+import { invitationsRoutes } from './modules/invitations/invitations.routes';
 
 config();
 
@@ -206,6 +207,7 @@ async function start() {
 
     // Register routes
     await server.register(testCorsRoutes); // CORS test endpoint
+    await server.register(invitationsRoutes); // Public invitation acceptance
     await server.register(usersRoutes, { prefix: '/api/users' });
     await server.register(dealsRoutes, { prefix: '/api/deals' });
     await server.register(contractsRoutes, { prefix: '/api/contracts' });

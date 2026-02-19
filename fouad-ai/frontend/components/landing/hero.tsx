@@ -68,7 +68,7 @@ export function HeroSection() {
       <div className="flex-1 space-y-6">
         <h1 className="text-5xl font-bold leading-tight text-foreground text-balance">
           AI-Assisted Digital Escrow for{" "}
-          <span className="text-primary">High-Value Deals</span>
+          <span className="text-primary">Safe Financial Transactions</span>
         </h1>
         <p className="max-w-md text-lg leading-relaxed text-muted-foreground">
           Create milestone-based deals, collect evidence via email, and enforce approvals before release. AI assists with structure and mapping—humans approve final decisions.
