@@ -57,7 +57,7 @@ export const aiWorker = new Worker(
   { connection }
 );
 
-// Email sending worker
+// Email sending worker (using Mailgun HTTP API)
 export const emailSendingWorker = new Worker(
   'email-sending',
   async (job: Job) => {
@@ -65,63 +65,35 @@ export const emailSendingWorker = new Worker(
     console.log(`Sending email: ${template} to ${Array.isArray(to) ? to.join(', ') : to}`);
 
     try {
-      // Create fresh nodemailer transporter for each email to avoid connection issues
-      const nodemailer = await import('nodemailer');
-      const fs = await import('fs/promises');
-      const path = await import('path');
+      // Use Mailgun HTTP API via emailService (works on Railway and all PaaS)
+      const { emailService } = await import('./email.service');
 
-      const transporter = nodemailer.default.createTransport({
-        host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT || '587', 10),
-        secure: process.env.SMTP_PORT === '465',
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASSWORD,
-        },
-        connectionTimeout: 30000,
-        greetingTimeout: 30000,
-        socketTimeout: 30000,
-      });
+      // Initialize if not already done
+      emailService.initializeMailgun();
 
-      // Load and render template
-      const templatePath = path.join(__dirname, '..', '..', 'templates', 'emails', `${template}.html`);
-      let html = await fs.readFile(templatePath, 'utf-8');
-
-      // Replace template variables
-      Object.entries(variables).forEach(([key, value]) => {
-        const placeholder = new RegExp(`{{${key}}}`, 'g');
-        html = html.replace(placeholder, String(value || ''));
-      });
-
-      // Handle test mode
-      const testMode = process.env.EMAIL_TEST_MODE === 'true';
-      const finalTo = testMode && process.env.EMAIL_TEST_RECIPIENT
-        ? process.env.EMAIL_TEST_RECIPIENT
-        : (Array.isArray(to) ? to.join(', ') : to);
-
-      if (testMode) {
-        console.log(`Test mode: Redirecting to ${finalTo}`);
-      }
-
-      // Send email
-      const result = await transporter.sendMail({
-        from: process.env.EMAIL_FROM || 'DealGuard <noreply@dealguard.org>',
-        to: finalTo,
+      // Send email using the new service
+      const result = await emailService.sendEmail({
+        to,
         subject,
-        html,
+        template,
+        variables,
+        dealId,
       });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to send email');
+      }
 
       console.log('✅ Email sent successfully:', {
         template,
         messageId: result.messageId,
-        recipients: finalTo,
+        recipients: Array.isArray(to) ? to.join(', ') : to,
       });
 
       return { success: true, messageId: result.messageId };
     } catch (error: any) {
-      console.error('Failed to send email:', {
+      console.error('❌ Failed to send email:', {
         error: error.message || 'Unknown error',
-        code: error.code,
         template,
         dealId,
       });
@@ -130,10 +102,10 @@ export const emailSendingWorker = new Worker(
   },
   {
     connection,
-    concurrency: 1, // One email at a time to avoid any connection issues
+    concurrency: 5, // Can handle more concurrent emails with HTTP API
     limiter: {
-      max: 5, // Max 5 jobs
-      duration: 30000, // Per 30 seconds
+      max: 20, // Max 20 emails
+      duration: 10000, // Per 10 seconds (within Mailgun limits)
     },
     lockDuration: 60000, // 60 second timeout for email jobs
     maxStalledCount: 2, // Retry up to 2 times if stalled

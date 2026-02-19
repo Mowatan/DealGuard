@@ -103,23 +103,44 @@ async function start() {
       };
     });
 
-    // Health check
+    // Health check with timeout to prevent hanging
     server.get('/health', async () => {
-      const storageStatus = await storage.healthCheck();
+      try {
+        // Run checks concurrently with a 3-second timeout
+        const [dbStatus, storageStatus] = await Promise.race([
+          Promise.all([
+            checkDatabase(),
+            storage.healthCheck()
+          ]),
+          // Timeout after 3 seconds
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Health check timeout')), 3000)
+          )
+        ]);
 
-      return {
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        database: await checkDatabase(),
-        storage: {
-          current: storageStatus.current,
-          providers: {
-            primary: storageStatus.primary ? 'healthy' : 'unhealthy',
-            fallback: storageStatus.fallback === null ? 'disabled' :
-                     (storageStatus.fallback ? 'healthy' : 'unhealthy')
+        return {
+          status: 'ok',
+          timestamp: new Date().toISOString(),
+          database: dbStatus,
+          storage: {
+            current: storageStatus.current,
+            providers: {
+              primary: storageStatus.primary ? 'healthy' : 'unhealthy',
+              fallback: storageStatus.fallback === null ? 'disabled' :
+                       (storageStatus.fallback ? 'healthy' : 'unhealthy')
+            }
           }
-        }
-      };
+        };
+      } catch (error) {
+        // Return degraded status if checks timeout or fail
+        return {
+          status: 'degraded',
+          timestamp: new Date().toISOString(),
+          error: error instanceof Error ? error.message : 'Unknown error',
+          database: 'unknown',
+          storage: 'unknown'
+        };
+      }
     });
 
     // Static file serving for local storage fallback
