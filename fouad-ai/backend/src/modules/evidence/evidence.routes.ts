@@ -68,8 +68,15 @@ export async function evidenceRoutes(server: FastifyInstance) {
     const { dealId } = request.params as { dealId: string };
     const { status } = request.query as any;
 
-    const evidence = await evidenceService.listEvidenceByDeal(dealId, status);
-    return evidence;
+    try {
+      const evidence = await evidenceService.listEvidenceByDeal(dealId, request.user!.id, status);
+      return evidence;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Unauthorized')) {
+        return reply.code(403).send({ error: error.message });
+      }
+      throw error;
+    }
   });
 
   // Get evidence by ID (all authenticated users)
@@ -80,7 +87,7 @@ export async function evidenceRoutes(server: FastifyInstance) {
     },
     async (request, reply) => {
     const { id } = request.params as { id: string };
-    const evidence = await evidenceService.getEvidenceById(id);
+    const evidence = await evidenceService.getEvidenceById(id, request.user!.id);
 
     if (!evidence) {
       return reply.code(404).send({ error: 'Evidence not found' });
@@ -129,8 +136,15 @@ export async function evidenceRoutes(server: FastifyInstance) {
       preHandler: [authenticate, requireCaseOfficer],
     },
     async (request, reply) => {
-    const evidence = await evidenceService.listQuarantinedEvidence();
-    return evidence;
+    try {
+      const evidence = await evidenceService.listQuarantinedEvidence(request.user!.id);
+      return evidence;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Unauthorized')) {
+        return reply.code(403).send({ error: error.message });
+      }
+      throw error;
+    }
   });
 
   // Release evidence from quarantine (case officer and above)

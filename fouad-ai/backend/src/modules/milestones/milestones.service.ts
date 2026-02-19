@@ -2,12 +2,20 @@ import { prisma } from '../../lib/prisma';
 import { createAuditLog } from '../../lib/audit';
 import { emailSendingQueue } from '../../lib/queue';
 import { MilestoneStatus } from '@prisma/client';
+import { canUserAccessMilestone, canUserAccessContract, isAdminOrCaseOfficer, isUserPartyMember } from '../../lib/authorization';
 
 // ============================================================================
 // MILESTONE DETAILS & LISTING
 // ============================================================================
 
-export async function getMilestoneDetails(milestoneId: string) {
+export async function getMilestoneDetails(milestoneId: string, userId: string) {
+  // Check if user has access to this milestone
+  const hasAccess = await canUserAccessMilestone(milestoneId, userId);
+
+  if (!hasAccess) {
+    throw new Error('Unauthorized: You do not have access to this milestone');
+  }
+
   const milestone = await prisma.milestone.findUnique({
     where: { id: milestoneId },
     include: {
@@ -59,7 +67,14 @@ export async function getMilestoneDetails(milestoneId: string) {
   return milestone;
 }
 
-export async function listMilestonesByContract(contractId: string) {
+export async function listMilestonesByContract(contractId: string, userId: string) {
+  // Check if user has access to this contract
+  const hasAccess = await canUserAccessContract(contractId, userId);
+
+  if (!hasAccess) {
+    throw new Error('Unauthorized: You do not have access to this contract');
+  }
+
   return prisma.milestone.findMany({
     where: { contractId },
     include: {
@@ -205,6 +220,13 @@ export async function setApprovalRequirements(
   },
   actorId: string
 ) {
+  // Only case officers and admins can set approval requirements
+  const isAuthorized = await isAdminOrCaseOfficer(actorId);
+
+  if (!isAuthorized) {
+    throw new Error('Unauthorized: Only case officers and admins can set approval requirements');
+  }
+
   // Check if milestone exists
   const milestone = await prisma.milestone.findUnique({
     where: { id: milestoneId },
@@ -258,6 +280,22 @@ export async function submitApproval(
   partyId: string | null,
   notes?: string
 ) {
+  // Check if user has access to this milestone
+  const hasAccess = await canUserAccessMilestone(milestoneId, userId);
+
+  if (!hasAccess) {
+    throw new Error('Unauthorized: You do not have access to this milestone');
+  }
+
+  // If user is claiming to represent a party, verify they are a member
+  if (partyId) {
+    const isMember = await isUserPartyMember(userId, partyId);
+
+    if (!isMember) {
+      throw new Error('Unauthorized: You are not a member of this party');
+    }
+  }
+
   // Check if milestone is in the right status
   const milestone = await prisma.milestone.findUnique({
     where: { id: milestoneId },
@@ -518,7 +556,14 @@ export async function autoApproveMilestone(milestoneId: string) {
 // LIST APPROVALS
 // ============================================================================
 
-export async function listApprovals(milestoneId: string) {
+export async function listApprovals(milestoneId: string, userId: string) {
+  // Check if user has access to this milestone
+  const hasAccess = await canUserAccessMilestone(milestoneId, userId);
+
+  if (!hasAccess) {
+    throw new Error('Unauthorized: You do not have access to this milestone');
+  }
+
   return prisma.milestoneApproval.findMany({
     where: { milestoneId },
     include: {

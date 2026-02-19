@@ -3,6 +3,7 @@ import { storage } from '../../lib/storage';
 import { createAuditLog } from '../../lib/audit';
 import { createHash } from 'crypto';
 import { blockchainAnchorQueue, emailSendingQueue } from '../../lib/queue';
+import { canUserAccessContract, isUserPartyMember } from '../../lib/authorization';
 
 interface CreateContractParams {
   dealId: string;
@@ -75,7 +76,14 @@ export async function createContractVersion(
   return contract;
 }
 
-export async function getContractById(id: string) {
+export async function getContractById(id: string, userId: string) {
+  // Check if user has access to this contract
+  const hasAccess = await canUserAccessContract(id, userId);
+
+  if (!hasAccess) {
+    return null; // Return null to indicate not found (don't reveal if contract exists)
+  }
+
   return prisma.contract.findUnique({
     where: { id },
     include: {
@@ -113,6 +121,13 @@ export async function uploadPhysicalDocument(
   mimeType: string,
   actorId: string
 ) {
+  // Check if user has access to this contract
+  const hasAccess = await canUserAccessContract(contractId, actorId);
+
+  if (!hasAccess) {
+    throw new Error('Unauthorized: You do not have access to this contract');
+  }
+
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
   });
@@ -148,7 +163,7 @@ export async function uploadPhysicalDocument(
   return updated;
 }
 
-export async function acceptContract(contractId: string, partyId: string) {
+export async function acceptContract(contractId: string, partyId: string, userId: string) {
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
     include: { deal: { include: { parties: true } } },
@@ -156,6 +171,13 @@ export async function acceptContract(contractId: string, partyId: string) {
 
   if (!contract) {
     throw new Error('Contract not found');
+  }
+
+  // Verify user is a member of the party they're accepting for
+  const isMember = await isUserPartyMember(userId, partyId);
+
+  if (!isMember) {
+    throw new Error('Unauthorized: You are not a member of this party');
   }
 
   // Check if already accepted
@@ -247,7 +269,14 @@ export async function acceptContract(contractId: string, partyId: string) {
   return acceptance;
 }
 
-export async function checkAcceptanceStatus(contractId: string) {
+export async function checkAcceptanceStatus(contractId: string, userId: string) {
+  // Check if user has access to this contract
+  const hasAccess = await canUserAccessContract(contractId, userId);
+
+  if (!hasAccess) {
+    throw new Error('Unauthorized: You do not have access to this contract');
+  }
+
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
     include: {

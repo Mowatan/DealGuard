@@ -5,6 +5,7 @@ import { DealStatus, InvitationStatus, AmendmentStatus, DeletionStatus, PartyRes
 import { calculateServiceFee, validateServiceTier } from './fee-calculator';
 import crypto from 'crypto';
 import * as progressService from '../progress/progress.service';
+import { canUserAccessDeal } from '../../lib/authorization';
 
 interface CreateDealParams {
   title: string;
@@ -302,39 +303,6 @@ export async function listDeals(options: {
       pages: Math.ceil(total / limit),
     },
   };
-}
-
-/**
- * Check if a user has access to a deal (is a party member)
- * Admins and case officers have access to all deals
- */
-export async function canUserAccessDeal(dealId: string, userId: string): Promise<boolean> {
-  // Get user to check role
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true },
-  });
-
-  if (!user) {
-    return false;
-  }
-
-  // Admins and case officers can access all deals
-  if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN' || user.role === 'CASE_OFFICER') {
-    return true;
-  }
-
-  // Check if user is a member of any party in this deal
-  const partyMember = await prisma.partyMember.findFirst({
-    where: {
-      userId: userId,
-      party: {
-        dealId: dealId,
-      },
-    },
-  });
-
-  return partyMember !== null;
 }
 
 export async function getDealById(id: string, userId: string) {

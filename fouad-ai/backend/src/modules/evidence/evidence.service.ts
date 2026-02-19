@@ -3,6 +3,7 @@ import { storage } from '../../lib/storage';
 import { createAuditLog } from '../../lib/audit';
 import { aiSuggestionQueue, emailSendingQueue } from '../../lib/queue';
 import { EvidenceStatus } from '@prisma/client';
+import { canUserAccessDeal, canUserAccessEvidence, isAdminOrCaseOfficer } from '../../lib/authorization';
 
 interface CreateEvidenceParams {
   dealId: string;
@@ -106,7 +107,14 @@ export async function createEvidence(params: CreateEvidenceParams) {
   return { ...evidence, attachments };
 }
 
-export async function listEvidenceByDeal(dealId: string, status?: EvidenceStatus) {
+export async function listEvidenceByDeal(dealId: string, userId: string, status?: EvidenceStatus) {
+  // Check if user has access to this deal
+  const hasAccess = await canUserAccessDeal(dealId, userId);
+
+  if (!hasAccess) {
+    throw new Error('Unauthorized: You do not have access to this deal');
+  }
+
   return prisma.evidenceItem.findMany({
     where: {
       dealId,
@@ -126,7 +134,14 @@ export async function listEvidenceByDeal(dealId: string, status?: EvidenceStatus
   });
 }
 
-export async function getEvidenceById(id: string) {
+export async function getEvidenceById(id: string, userId: string) {
+  // Check if user has access to this evidence
+  const hasAccess = await canUserAccessEvidence(id, userId);
+
+  if (!hasAccess) {
+    return null; // Return null to indicate not found (don't reveal if evidence exists)
+  }
+
   return prisma.evidenceItem.findUnique({
     where: { id },
     include: {
@@ -148,6 +163,13 @@ export async function reviewEvidence(
   reviewNotes: string,
   reviewedBy: string
 ) {
+  // Only admins and case officers can review evidence
+  const isAuthorized = await isAdminOrCaseOfficer(reviewedBy);
+
+  if (!isAuthorized) {
+    throw new Error('Unauthorized: Only case officers and admins can review evidence');
+  }
+
   const evidence = await prisma.evidenceItem.update({
     where: { id: evidenceId },
     data: {
@@ -433,7 +455,14 @@ async function quarantineEvidence(
 // QUARANTINE MANAGEMENT
 // ============================================================================
 
-export async function listQuarantinedEvidence() {
+export async function listQuarantinedEvidence(userId: string) {
+  // Only admins and case officers can view quarantined evidence
+  const isAuthorized = await isAdminOrCaseOfficer(userId);
+
+  if (!isAuthorized) {
+    throw new Error('Unauthorized: Only case officers and admins can view quarantined evidence');
+  }
+
   return prisma.evidenceItem.findMany({
     where: {
       status: EvidenceStatus.QUARANTINED,
@@ -457,6 +486,13 @@ export async function releaseFromQuarantine(
   releasedBy: string,
   releaseNotes?: string
 ) {
+  // Only admins and case officers can release from quarantine
+  const isAuthorized = await isAdminOrCaseOfficer(releasedBy);
+
+  if (!isAuthorized) {
+    throw new Error('Unauthorized: Only case officers and admins can release from quarantine');
+  }
+
   const evidence = await prisma.evidenceItem.findUnique({
     where: { id: evidenceId },
   });
