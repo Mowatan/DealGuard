@@ -4,6 +4,7 @@ import * as dealService from './deals.service';
 import { authenticate } from '../../middleware/auth';
 import { requireCaseOfficer } from '../../middleware/authorize';
 import { ServiceTier } from '@prisma/client';
+import { prisma } from '../../lib/prisma';
 
 const createDealSchema = z.object({
   title: z.string().min(1),
@@ -175,6 +176,129 @@ export async function dealsRoutes(server: FastifyInstance) {
       throw error;
     }
   });
+
+  // Get deal progress (all authenticated users - with authorization check)
+  server.get(
+    '/:id/progress',
+    {
+      preHandler: [authenticate],
+    },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const userId = request.user!.id;
+
+      // Verify user has access to this deal
+      const deal = await prisma.deal.findFirst({
+        where: {
+          id,
+          OR: [
+            { creatorId: userId },
+            { parties: { some: { members: { some: { userId } } } } },
+          ],
+        },
+        include: {
+          parties: {
+            include: {
+              members: {
+                where: { userId },
+                include: {
+                  user: {
+                    select: { id: true, name: true, email: true },
+                  },
+                },
+              },
+            },
+          },
+          milestones: {
+            orderBy: { order: 'asc' },
+          },
+          contract: true,
+        },
+      });
+
+      if (!deal) {
+        return reply.code(404).send({ error: 'Deal not found' });
+      }
+
+      // Calculate progress
+      const totalMilestones = deal.milestones.length;
+      const completedMilestones = deal.milestones.filter((m) => m.status === 'APPROVED').length;
+      const progressPercentage =
+        totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+
+      // Count party statuses
+      const totalParties = deal.parties.length;
+      const acceptedParties = deal.parties.filter((p) => p.invitationStatus === 'ACCEPTED').length;
+      const pendingParties = deal.parties.filter((p) => p.invitationStatus === 'PENDING').length;
+
+      // Determine current stage
+      let currentStage = 'CREATED';
+      let stageDescription = 'Deal created, waiting for parties to accept';
+
+      if (acceptedParties === totalParties && totalParties > 0) {
+        currentStage = 'ACTIVE';
+        stageDescription = 'All parties accepted, deal is active';
+
+        if (completedMilestones === totalMilestones && totalMilestones > 0) {
+          currentStage = 'COMPLETED';
+          stageDescription = 'All milestones completed';
+        } else if (completedMilestones > 0) {
+          currentStage = 'IN_PROGRESS';
+          stageDescription = `${completedMilestones} of ${totalMilestones} milestones completed`;
+        }
+      }
+
+      // What's blocking progress?
+      const blockers = [];
+      if (pendingParties > 0) {
+        blockers.push(
+          `${pendingParties} ${pendingParties === 1 ? 'party has' : 'parties have'} not accepted yet`
+        );
+      }
+
+      const pendingMilestones = deal.milestones.filter((m) => m.status === 'PENDING').length;
+      if (pendingMilestones > 0 && acceptedParties === totalParties) {
+        blockers.push(
+          `${pendingMilestones} milestone${pendingMilestones === 1 ? '' : 's'} pending approval`
+        );
+      }
+
+      return reply.send({
+        stage: currentStage,
+        stageDescription,
+        progressPercentage,
+        blockers: blockers.length > 0 ? blockers : null,
+        stats: {
+          totalParties,
+          acceptedParties,
+          pendingParties,
+          totalMilestones,
+          completedMilestones,
+          pendingMilestones,
+        },
+        parties: deal.parties.map((p) => ({
+          id: p.id,
+          name: p.name,
+          role: p.role,
+          status: p.invitationStatus,
+          members: p.members.map((m) => ({
+            user: m.user
+              ? {
+                  name: m.user.name,
+                  email: m.user.email,
+                }
+              : null,
+          })),
+        })),
+        milestones: deal.milestones.map((m) => ({
+          id: m.id,
+          title: m.title,
+          status: m.status,
+          order: m.order,
+        })),
+      });
+    }
+  );
 
   // Get invitation details by token (no auth required)
   server.get(
