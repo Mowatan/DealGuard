@@ -96,12 +96,26 @@ class EmailService {
   ): Promise<string> {
     let template = await this.loadTemplate(templateName);
 
+    // Debug: Log variables being replaced
+    console.log(`📧 Rendering template "${templateName}" with variables:`, Object.keys(variables));
+
     // Replace all {{variable}} placeholders
     Object.entries(variables).forEach(([key, value]) => {
       const placeholder = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
       const stringValue = value !== null && value !== undefined ? String(value) : '';
-      template = template.replace(placeholder, stringValue);
+      const matchCount = (template.match(placeholder) || []).length;
+
+      if (matchCount > 0) {
+        template = template.replace(placeholder, stringValue);
+        console.log(`   ✓ Replaced {{${key}}} (${matchCount} occurrence(s))`);
+      }
     });
+
+    // Check for unreplaced variables
+    const unreplacedVars = template.match(/{{[^}]+}}/g);
+    if (unreplacedVars && unreplacedVars.length > 0) {
+      console.warn(`⚠️  Unreplaced variables in template "${templateName}":`, unreplacedVars);
+    }
 
     return template;
   }
