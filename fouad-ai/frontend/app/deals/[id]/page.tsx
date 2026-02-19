@@ -22,6 +22,7 @@ import { PendingAmendments } from '@/components/deals/amendments/PendingAmendmen
 import { AmendmentHistory } from '@/components/deals/amendments/AmendmentHistory';
 import { DeleteDealButton } from '@/components/deals/amendments/DeleteDealButton';
 import { ProgressTracker } from '@/components/deals/ProgressTracker';
+import { DealProgress } from '@/components/deal-progress';
 
 interface Deal {
   id: string;
@@ -366,8 +367,8 @@ export default function DealDetailPage() {
         </div>
 
         {activeTab === 'progress' && (
-          <div>
-            <ProgressTracker dealId={deal.id} />
+          <div className="py-6">
+            <DealProgress dealId={deal.id} />
           </div>
         )}
 

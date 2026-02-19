@@ -12,6 +12,7 @@ interface Deal {
   title: string;
   status: string;
   createdAt: string;
+  progressPercentage?: number;
   parties: Array<{
     id: string;
     role: string;
@@ -179,6 +180,20 @@ export default function DealsPage() {
                       Waiting for {pendingParties} {pendingParties === 1 ? 'party' : 'parties'} to accept
                     </p>
                   )}
+
+                  {/* Mini Progress Bar */}
+                  <div className="mb-3">
+                    <div className="flex justify-between text-xs text-slate-600 mb-1">
+                      <span>Progress</span>
+                      <span className="font-semibold">{deal.progressPercentage || 0}%</span>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-2">
+                      <div
+                        className="bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full transition-all duration-300"
+                        style={{ width: `${deal.progressPercentage || 0}%` }}
+                      />
+                    </div>
+                  </div>
 
                   <div className="flex gap-6 text-sm text-slate-600">
                     <div>

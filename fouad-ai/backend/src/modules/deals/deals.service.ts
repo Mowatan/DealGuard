@@ -339,6 +339,16 @@ export async function listDeals(options: {
       where,
       include: {
         parties: true,
+        contracts: {
+          include: {
+            milestones: {
+              select: {
+                id: true,
+                status: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
             contracts: true,
@@ -353,8 +363,23 @@ export async function listDeals(options: {
     prisma.deal.count({ where }),
   ]);
 
+  // Calculate progress percentage for each deal
+  const dealsWithProgress = deals.map((deal) => {
+    const contract = deal.contracts.find((c) => c.isEffective) || deal.contracts[deal.contracts.length - 1];
+    const milestones = contract?.milestones || [];
+
+    const totalMilestones = milestones.length;
+    const completedMilestones = milestones.filter((m) => m.status === 'APPROVED').length;
+    const progressPercentage = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+
+    return {
+      ...deal,
+      progressPercentage,
+    };
+  });
+
   return {
-    deals,
+    deals: dealsWithProgress,
     pagination: {
       total,
       page,
