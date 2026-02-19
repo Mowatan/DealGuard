@@ -1,5 +1,8 @@
 import { FastifyInstance } from 'fastify';
 import * as dealsService from '../deals/deals.service';
+import { authenticate } from '../../middleware/auth';
+import { prisma } from '../../lib/prisma';
+import { InvitationStatus } from '@prisma/client';
 
 /**
  * Invitation acceptance routes
@@ -63,53 +66,131 @@ export async function invitationsRoutes(server: FastifyInstance) {
     }
   );
 
-  // Accept invitation (public endpoint - no auth required initially)
+  // Accept invitation (requires authentication)
   server.post(
     '/api/invitations/:token/accept',
+    {
+      preHandler: [authenticate],
+    },
     async (request, reply) => {
       const { token } = request.params as { token: string };
+      const userId = request.user!.id;
 
       try {
-        // Confirm the invitation
-        const result = await dealsService.confirmPartyInvitation(token);
+        // Find the party by invitation token
+        const party = await prisma.party.findFirst({
+          where: { invitationToken: token },
+          include: {
+            deal: true,
+            members: true,
+          },
+        });
 
-        if (result.alreadyAccepted) {
+        if (!party) {
+          return reply.code(404).send({
+            error: 'Invalid invitation',
+            message: 'This invitation link is invalid or has expired.',
+          });
+        }
+
+        // Check if invitation was declined
+        if (party.invitationStatus === InvitationStatus.DECLINED) {
+          return reply.code(400).send({
+            error: 'Invitation declined',
+            message: 'This invitation has been declined and cannot be accepted.',
+          });
+        }
+
+        // Check if already accepted
+        if (party.invitationStatus === InvitationStatus.ACCEPTED) {
           return {
             success: true,
             alreadyAccepted: true,
             message: 'This invitation has already been accepted.',
-            dealId: result.deal.id,
-            dealNumber: result.deal.dealNumber,
+            dealId: party.dealId,
+            dealNumber: party.deal.dealNumber,
           };
+        }
+
+        // Check if user is already a member of this party
+        const existingMember = party.members.find((m) => m.userId === userId);
+
+        if (!existingMember) {
+          // Add user as a party member
+          await prisma.partyMember.create({
+            data: {
+              partyId: party.id,
+              userId: userId,
+            },
+          });
+        }
+
+        // Update party invitation status to ACCEPTED
+        await prisma.party.update({
+          where: { id: party.id },
+          data: {
+            invitationStatus: InvitationStatus.ACCEPTED,
+            respondedAt: new Date(),
+          },
+        });
+
+        // Create audit log
+        const { createAuditLog } = await import('../../lib/audit');
+        await createAuditLog({
+          dealId: party.dealId,
+          eventType: 'PARTY_ACCEPTED_INVITATION',
+          actor: userId,
+          entityType: 'Party',
+          entityId: party.id,
+          newState: { invitationStatus: InvitationStatus.ACCEPTED },
+          metadata: {
+            partyName: party.name,
+            partyRole: party.role,
+          },
+        });
+
+        // Check if all parties have accepted
+        const allParties = await prisma.party.findMany({
+          where: { dealId: party.dealId },
+        });
+
+        const allAccepted = allParties.every((p) => p.invitationStatus === InvitationStatus.ACCEPTED);
+
+        // If all parties accepted, update deal status to ACTIVE
+        if (allAccepted && party.deal.status === 'PENDING_ACCEPTANCE') {
+          await prisma.deal.update({
+            where: { id: party.dealId },
+            data: { status: 'ACTIVE' },
+          });
+
+          // Create audit log for deal activation
+          await createAuditLog({
+            dealId: party.dealId,
+            eventType: 'DEAL_ACTIVATED',
+            actor: 'SYSTEM',
+            entityType: 'Deal',
+            entityId: party.dealId,
+            newState: { status: 'ACTIVE' },
+            metadata: {
+              reason: 'All parties accepted invitations',
+            },
+          });
+
+          console.log(`✅ Deal ${party.deal.dealNumber} activated - all parties accepted`);
         }
 
         return {
           success: true,
           message: 'Invitation accepted successfully!',
-          dealId: result.deal.id,
-          dealNumber: result.deal.dealNumber,
-          allPartiesAccepted: result.allPartiesAccepted || false,
+          dealId: party.dealId,
+          dealNumber: party.deal.dealNumber,
+          allPartiesAccepted: allAccepted,
         };
       } catch (error: any) {
         console.error('Error accepting invitation:', error);
-
-        if (error.message.includes('Invalid invitation')) {
-          return reply.code(404).send({
-            error: 'Invalid invitation',
-            message: 'This invitation link is invalid or has expired.'
-          });
-        }
-
-        if (error.message.includes('declined')) {
-          return reply.code(400).send({
-            error: 'Invitation already declined',
-            message: 'This invitation has been declined and cannot be accepted.'
-          });
-        }
-
         return reply.code(500).send({
           error: 'Failed to accept invitation',
-          message: error.message
+          message: error.message,
         });
       }
     }

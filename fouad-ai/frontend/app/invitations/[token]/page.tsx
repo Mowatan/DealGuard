@@ -76,8 +76,13 @@ export default function InvitationAcceptancePage() {
 
   const handleAccept = async () => {
     if (!isSignedIn) {
-      // Redirect to sign-up with invitation context
-      router.push(`/sign-up?invitationToken=${token}&returnUrl=/invitations/${token}`);
+      // Store invitation token in localStorage for auto-accept after signup/login
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pendingInvitation', token);
+        localStorage.setItem('pendingInvitationAction', 'accept');
+      }
+      // Redirect to sign-up with return URL
+      router.push(`/sign-up?redirect=${encodeURIComponent(`/invitations/${token}`)}`);
       return;
     }
 
@@ -92,6 +97,7 @@ export default function InvitationAcceptancePage() {
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include', // Include cookies for authentication
         }
       );
 
@@ -108,12 +114,18 @@ export default function InvitationAcceptancePage() {
         setSuccessMessage('Invitation accepted successfully!');
       }
 
+      // Clear any pending invitation from localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('pendingInvitation');
+        localStorage.removeItem('pendingInvitationAction');
+      }
+
       // Refresh invitation data
       await fetchInvitation();
 
       // Redirect to deal page after a short delay
       setTimeout(() => {
-        router.push(`/deals/${result.dealId}?accepted=true`);
+        router.push(`/deals/${result.dealId}?message=invitation-accepted`);
       }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to accept invitation');

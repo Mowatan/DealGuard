@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import Link from 'next/link';
 import { dealsApi, milestonesApi, usersApi, ApiError, apiClient } from '@/lib/api-client';
@@ -114,6 +114,7 @@ interface Deal {
 export default function DealDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const dealId = params.id as string;
 
@@ -126,6 +127,9 @@ export default function DealDetailPage() {
   const [proposeAmendmentModalOpen, setProposeAmendmentModalOpen] = useState(false);
   const [amendments, setAmendments] = useState<any[]>([]);
   const [loadingAmendments, setLoadingAmendments] = useState(false);
+
+  // Check for success message (e.g., after accepting invitation)
+  const successMessage = searchParams.get('message');
 
   // Check authentication
   useEffect(() => {
@@ -332,6 +336,19 @@ export default function DealDetailPage() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
+        {/* Success Message Banner */}
+        {successMessage === 'invitation-accepted' && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+            <CheckCircle className="h-5 w-5 text-green-600" />
+            <div>
+              <p className="font-semibold text-green-900">Welcome to the deal!</p>
+              <p className="text-sm text-green-700">
+                You've successfully accepted the invitation. This deal is now in your deals list.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-2 border-b border-slate-200 mb-6">
           {['progress', 'overview', 'contract', 'evidence', 'custody', 'amendments'].map((tab) => (
             <button
