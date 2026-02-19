@@ -3,186 +3,118 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your DealGuard Transaction Has Been Created</title>
+  <title>Transaction Created - DealGuard</title>
   <style>
-    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #1f2937; background-color: #f3f4f6; }
-    .email-wrapper { width: 100%; background-color: #f3f4f6; padding: 40px 20px; }
-    .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-
-    /* Header */
-    .email-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center; }
-    .email-header h1 { margin: 0 0 8px 0; font-size: 32px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px; }
-    .email-header .tagline { margin: 0; font-size: 14px; color: #e0e7ff; font-weight: 500; }
-
-    /* Content */
-    .email-content { padding: 40px 30px; }
-    .greeting { margin: 0 0 24px 0; font-size: 18px; color: #374151; font-weight: 500; }
-
-    /* Success Badge */
-    .success-badge { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; padding: 12px 20px; border-radius: 8px; text-align: center; margin: 0 0 30px 0; }
-    .success-badge .icon { font-size: 24px; margin-bottom: 8px; }
-    .success-badge h2 { margin: 0; font-size: 20px; font-weight: 600; }
-    .success-badge p { margin: 4px 0 0 0; font-size: 14px; opacity: 0.9; }
-
-    /* Message */
-    .message { margin: 0 0 24px 0; color: #4b5563; font-size: 16px; line-height: 1.7; }
-    .message strong { color: #1f2937; font-weight: 600; }
-
-    /* Deal Details Box */
-    .deal-details { background-color: #f9fafb; border: 2px solid #e5e7eb; border-radius: 8px; padding: 24px; margin: 30px 0; }
-    .deal-details h3 { margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
-
-    .detail-row { display: flex; padding: 12px 0; border-bottom: 1px solid #e5e7eb; }
-    .detail-row:last-child { border-bottom: none; }
-    .detail-label { flex: 0 0 45%; font-weight: 600; color: #374151; font-size: 14px; }
-    .detail-value { flex: 1; color: #6b7280; font-size: 14px; }
-    .detail-value strong { color: #1f2937; font-weight: 700; }
-    .detail-value .highlight { color: #7c3aed; font-weight: 600; }
-
-    /* Service Tier Badge */
-    .tier-badge { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-
-    /* Info Box */
-    .info-box { background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 20px; margin: 24px 0; border-radius: 4px; }
-    .info-box h4 { margin: 0 0 8px 0; font-size: 15px; font-weight: 600; color: #1e40af; }
-    .info-box p { margin: 0; font-size: 14px; color: #1e40af; line-height: 1.6; }
-    .info-box ul { margin: 8px 0 0 0; padding-left: 20px; }
-    .info-box li { margin: 4px 0; font-size: 14px; color: #1e40af; }
-
-    /* CTA Button */
-    .cta-section { text-align: center; margin: 36px 0; }
-    .cta-button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); transition: transform 0.2s; }
-    .cta-button:hover { transform: translateY(-2px); }
-    .cta-subtext { margin: 12px 0 0 0; font-size: 13px; color: #6b7280; }
-
-    /* Footer */
-    .email-footer { background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb; }
-    .email-footer p { margin: 0 0 8px 0; font-size: 13px; color: #6b7280; line-height: 1.6; }
-    .email-footer .company-name { font-weight: 600; color: #374151; }
-    .email-footer .support-link { color: #667eea; text-decoration: none; font-weight: 500; }
-    .email-footer .support-link:hover { text-decoration: underline; }
-    .email-footer .legal { font-size: 11px; color: #9ca3af; margin-top: 16px; }
-
-    /* Mobile Responsive */
-    @media only screen and (max-width: 600px) {
-      .email-wrapper { padding: 20px 10px !important; }
-      .email-content { padding: 30px 20px !important; }
-      .email-header { padding: 30px 20px !important; }
-      .email-header h1 { font-size: 26px !important; }
-      .deal-details { padding: 20px !important; }
-      .detail-row { flex-direction: column; padding: 10px 0 !important; }
-      .detail-label { margin-bottom: 4px; }
-      .cta-button { padding: 14px 30px !important; font-size: 15px !important; }
+    body{margin:0;padding:0;font-family:Arial,sans-serif;font-size:16px;line-height:1.5;color:#1f2937;background:#f3f4f6}
+    .wrap{width:100%;background:#f3f4f6;padding:20px}
+    .container{max-width:600px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,0.1)}
+    .header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px;text-align:center}
+    .header h1{margin:0;font-size:28px;font-weight:700;color:#fff}
+    .header p{margin:4px 0 0;font-size:13px;color:#e0e7ff}
+    .content{padding:30px}
+    .greeting{margin:0 0 20px;font-size:17px;color:#374151;font-weight:500}
+    .badge{background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:#fff;padding:12px 20px;border-radius:8px;text-align:center;margin:0 0 24px}
+    .badge .icon{font-size:24px;margin-bottom:6px}
+    .badge h2{margin:0;font-size:19px;font-weight:600}
+    .badge p{margin:4px 0 0;font-size:13px;opacity:0.9}
+    .msg{margin:0 0 20px;color:#4b5563;font-size:15px}
+    .details{background:#f9fafb;border:2px solid #e5e7eb;border-radius:8px;padding:20px;margin:24px 0}
+    .details h3{margin:0 0 16px;font-size:14px;font-weight:600;color:#6b7280;text-transform:uppercase}
+    .row{display:flex;padding:10px 0;border-bottom:1px solid #e5e7eb}
+    .row:last-child{border-bottom:none}
+    .label{flex:0 0 40%;font-weight:600;color:#374151;font-size:14px}
+    .value{flex:1;color:#6b7280;font-size:14px}
+    .value strong{color:#1f2937;font-weight:700}
+    .tier{display:inline-block;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;text-transform:uppercase}
+    .cta{text-align:center;margin:30px 0}
+    .btn{display:inline-block;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;text-decoration:none;padding:16px 40px;border-radius:8px;font-weight:600;font-size:16px;box-shadow:0 4px 12px rgba(102,126,234,0.4)}
+    .footer{background:#f9fafb;padding:24px;text-align:center;border-top:1px solid #e5e7eb}
+    .footer p{margin:0 0 6px;font-size:12px;color:#6b7280}
+    .footer .name{font-weight:600;color:#374151}
+    .footer .legal{font-size:10px;color:#9ca3af;margin-top:12px}
+    .footer a{color:#667eea;text-decoration:none}
+    @media(max-width:600px){
+      .wrap{padding:10px}
+      .content{padding:20px}
+      .header{padding:20px}
+      .row{flex-direction:column}
+      .label{margin-bottom:4px}
     }
   </style>
 </head>
 <body>
-  <div class="email-wrapper">
+  <div class="wrap">
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
       <tr>
         <td align="center">
-          <table class="email-container" cellspacing="0" cellpadding="0" border="0" width="600">
-            <!-- Header -->
+          <table class="container" cellspacing="0" cellpadding="0" border="0" width="600">
             <tr>
-              <td class="email-header">
+              <td class="header">
                 <h1>DealGuard</h1>
-                <p class="tagline">Secure Escrow & Governance Platform</p>
+                <p>Secure Transaction Platform</p>
               </td>
             </tr>
-
-            <!-- Content -->
             <tr>
-              <td class="email-content">
+              <td class="content">
                 <p class="greeting">Hello {{recipientName}},</p>
 
-                <div class="success-badge">
+                <div class="badge">
                   <div class="icon">✓</div>
                   <h2>Transaction Created Successfully</h2>
                   <p>{{dealNumber}}</p>
                 </div>
 
-                <p class="message">
-                  Your transaction has been successfully created on DealGuard. We've sent invitation emails to all parties involved. The deal will become active once all parties have reviewed and accepted their participation.
-                </p>
+                <p class="msg">Your transaction has been created on DealGuard. Invitation emails have been sent to all parties. The deal will become active once all parties accept.</p>
 
-                <div class="deal-details">
+                <div class="details">
                   <h3>Transaction Details</h3>
-
-                  <div class="detail-row">
-                    <div class="detail-label">Deal Number</div>
-                    <div class="detail-value"><strong>{{dealNumber}}</strong></div>
+                  <div class="row">
+                    <div class="label">Deal Number</div>
+                    <div class="value"><strong>{{dealNumber}}</strong></div>
                   </div>
-
-                  <div class="detail-row">
-                    <div class="detail-label">Deal Title</div>
-                    <div class="detail-value"><strong>{{dealTitle}}</strong></div>
+                  <div class="row">
+                    <div class="label">Deal Title</div>
+                    <div class="value"><strong>{{dealTitle}}</strong></div>
                   </div>
-
-                  <div class="detail-row">
-                    <div class="detail-label">Service Tier</div>
-                    <div class="detail-value"><span class="tier-badge">{{serviceTier}}</span></div>
+                  <div class="row">
+                    <div class="label">Service Tier</div>
+                    <div class="value"><span class="tier">{{serviceTier}}</span></div>
                   </div>
-
-                  <div class="detail-row">
-                    <div class="detail-label">Total Value</div>
-                    <div class="detail-value"><strong class="highlight">{{currency}} {{totalAmount}}</strong></div>
+                  <div class="row">
+                    <div class="label">Total Value</div>
+                    <div class="value"><strong>{{currency}} {{totalAmount}}</strong></div>
                   </div>
-
-                  <div class="detail-row">
-                    <div class="detail-label">Parties Invited</div>
-                    <div class="detail-value">{{partiesCount}} parties</div>
+                  <div class="row">
+                    <div class="label">Parties Invited</div>
+                    <div class="value">{{partiesCount}} parties</div>
                   </div>
-
-                  <div class="detail-row">
-                    <div class="detail-label">Milestones</div>
-                    <div class="detail-value">{{milestonesCount}} milestones configured</div>
+                  <div class="row">
+                    <div class="label">Milestones</div>
+                    <div class="value">{{milestonesCount}} configured</div>
                   </div>
-
-                  <div class="detail-row">
-                    <div class="detail-label">Created On</div>
-                    <div class="detail-value">{{createdDate}}</div>
+                  <div class="row">
+                    <div class="label">Created On</div>
+                    <div class="value">{{createdDate}}</div>
                   </div>
                 </div>
 
-                <div class="info-box">
-                  <h4>📋 What Happens Next?</h4>
-                  <ul>
-                    <li><strong>Party Invitations Sent:</strong> All invited parties will receive an email with instructions to review and accept their role in this transaction.</li>
-                    <li><strong>Waiting for Confirmations:</strong> The deal will remain in "Pending" status until all parties confirm their participation.</li>
-                    <li><strong>Deal Activation:</strong> Once everyone has accepted, the deal becomes active and milestone tracking begins.</li>
-                    <li><strong>Blockchain Anchoring:</strong> All actions are cryptographically anchored to the blockchain for tamper-proof audit trails.</li>
-                  </ul>
+                <p class="msg">Monitor party confirmations and manage your transaction through the dashboard.</p>
+
+                <div class="cta">
+                  <a href="{{dealUrl}}" class="btn">View Deal Dashboard</a>
                 </div>
 
-                <p class="message">
-                  You can monitor the status of party confirmations and manage your deal through your dashboard at any time.
-                </p>
-
-                <div class="cta-section">
-                  <a href="{{dealUrl}}" class="cta-button">View Deal Dashboard</a>
-                  <p class="cta-subtext">Track party confirmations and manage your transaction</p>
-                </div>
-
-                <p class="message" style="font-size: 14px; color: #6b7280; margin-top: 32px;">
-                  <strong>Need help?</strong> Our support team is available 24/7 to assist you with your transaction. Contact us at <a href="mailto:support@dealguard.org" style="color: #667eea; text-decoration: none;">support@dealguard.org</a>
+                <p class="msg" style="font-size:13px;color:#6b7280;margin-top:24px">
+                  Need help? Email <a href="mailto:support@dealguard.org" style="color:#667eea">support@dealguard.org</a>
                 </p>
               </td>
             </tr>
-
-            <!-- Footer -->
             <tr>
-              <td class="email-footer">
-                <p class="company-name">DealGuard</p>
-                <p>Secure Escrow & Governance Platform</p>
-                <p style="margin-top: 16px;">
-                  Questions? <a href="mailto:support@dealguard.org" class="support-link">Contact Support</a>
-                </p>
+              <td class="footer">
+                <p class="name">DealGuard</p>
+                <p>Secure Transaction Platform</p>
                 <p class="legal">
-                  This is an automated notification from DealGuard. Please do not reply directly to this email.<br>
-                  &copy; 2026 DealGuard. All rights reserved.<br>
-                  <a href="https://dealguard.org/privacy" style="color: #9ca3af; text-decoration: none;">Privacy Policy</a> |
-                  <a href="https://dealguard.org/terms" style="color: #9ca3af; text-decoration: none;">Terms of Service</a> |
-                  <a href="https://dealguard.org/unsubscribe?email={{recipientEmail}}" style="color: #9ca3af; text-decoration: none;">Unsubscribe</a>
+                  &copy; 2026 DealGuard. All rights reserved.
                 </p>
               </td>
             </tr>
