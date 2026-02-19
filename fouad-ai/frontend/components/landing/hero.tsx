@@ -67,26 +67,30 @@ export function HeroSection() {
     <section className="mx-auto flex max-w-6xl items-center gap-12 px-6 py-20">
       <div className="flex-1 space-y-6">
         <h1 className="text-5xl font-bold leading-tight text-foreground text-balance">
-          Digital Escrow for Safe{" "}
-          <span className="text-primary">Business Transactions</span>
+          AI-Assisted Digital Escrow for{" "}
+          <span className="text-primary">High-Value Deals</span>
         </h1>
         <p className="max-w-md text-lg leading-relaxed text-muted-foreground">
-          DealGuard provides secure, evidence-based escrow services for complex deals.
-          Protect your transactions with AI-assisted workflow management and blockchain-anchored audit trails.
+          Create milestone-based deals, collect evidence via email, and enforce approvals before release. AI assists with structure and mapping—humans approve final decisions.
         </p>
-        <div className="flex items-center gap-6">
-          <Link
-            href="/sign-up"
-            className="rounded-xl bg-primary px-8 py-3.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            Get Started
-          </Link>
-          <Link
-            href="/deals"
-            className="rounded-xl border border-border bg-background px-8 py-3.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-          >
-            Browse Deals
-          </Link>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-6">
+            <Link
+              href="/sign-up"
+              className="rounded-xl bg-primary px-8 py-3.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Get Started
+            </Link>
+            <Link
+              href="/deals"
+              className="rounded-xl border border-border bg-background px-8 py-3.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+            >
+              Browse Deals
+            </Link>
+          </div>
+          <p className="text-sm text-muted-foreground italic">
+            AI suggests. People approve. Full audit trail.
+          </p>
         </div>
       </div>
       <div className="hidden flex-1 items-center justify-center lg:flex">
@@ -316,7 +320,7 @@ export function FAQSection() {
   const faqs = [
     {
       question: "What is DealGuard?",
-      answer: "DealGuard is a digital escrow platform for multi-party business transactions. We provide milestone-based fund releases, evidence collection and review, dispute resolution, and complete audit trails. Blockchain anchoring is planned for Q2 2026.",
+      answer: "DealGuard is an AI-assisted digital escrow governance platform for multi-party business transactions. We provide evidence-based milestones, structured dispute resolution, complete audit trails, and encryption with role-based access controls. AI helps structure deals and map evidence—humans approve all final decisions. Blockchain anchoring is planned for Q2 2026.",
     },
     {
       question: "How does escrow protect my transaction?",
@@ -332,7 +336,7 @@ export function FAQSection() {
     },
     {
       question: "Is my data secure?",
-      answer: "Yes. We use encryption, role-based access controls, and complete audit trails. Only authorized parties can access deal information. Blockchain anchoring (launching Q2 2026) will provide immutable verification without storing any personal information on-chain.",
+      answer: "Yes. We use encryption, role-based access controls (RBAC), and complete audit trails. Only authorized parties can access deal information. Blockchain anchoring (launching Q2 2026) will provide immutable verification using hash-only notarization—no personal information stored on-chain.",
     },
     {
       question: "What are the fees?",
