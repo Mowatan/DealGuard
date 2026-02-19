@@ -5,7 +5,7 @@ import { prisma } from './prisma';
  */
 
 /**
- * Check if a user has access to a deal (is a party member or has admin role)
+ * Check if a user has access to a deal (is creator, party member, or has admin role)
  */
 export async function canUserAccessDeal(dealId: string, userId: string): Promise<boolean> {
   // Get user to check role
@@ -20,6 +20,18 @@ export async function canUserAccessDeal(dealId: string, userId: string): Promise
 
   // Admins and case officers can access all deals
   if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN' || user.role === 'CASE_OFFICER') {
+    return true;
+  }
+
+  // Check if user is the creator of the deal
+  const deal = await prisma.deal.findFirst({
+    where: {
+      id: dealId,
+      creatorId: userId,
+    },
+  });
+
+  if (deal) {
     return true;
   }
 
