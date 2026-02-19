@@ -209,10 +209,13 @@ export async function dealsRoutes(server: FastifyInstance) {
               },
             },
           },
-          milestones: {
-            orderBy: { order: 'asc' },
+          contracts: {
+            include: {
+              milestones: {
+                orderBy: { order: 'asc' },
+              },
+            },
           },
-          contract: true,
         },
       });
 
@@ -220,9 +223,13 @@ export async function dealsRoutes(server: FastifyInstance) {
         return reply.code(404).send({ error: 'Deal not found' });
       }
 
+      // Get the effective contract (or latest if none effective)
+      const contract = deal.contracts.find((c) => c.isEffective) || deal.contracts[deal.contracts.length - 1];
+      const milestones = contract?.milestones || [];
+
       // Calculate progress
-      const totalMilestones = deal.milestones.length;
-      const completedMilestones = deal.milestones.filter((m) => m.status === 'APPROVED').length;
+      const totalMilestones = milestones.length;
+      const completedMilestones = milestones.filter((m) => m.status === 'APPROVED').length;
       const progressPercentage =
         totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
 
@@ -256,7 +263,7 @@ export async function dealsRoutes(server: FastifyInstance) {
         );
       }
 
-      const pendingMilestones = deal.milestones.filter((m) => m.status === 'PENDING').length;
+      const pendingMilestones = milestones.filter((m) => m.status === 'PENDING').length;
       if (pendingMilestones > 0 && acceptedParties === totalParties) {
         blockers.push(
           `${pendingMilestones} milestone${pendingMilestones === 1 ? '' : 's'} pending approval`
@@ -290,7 +297,7 @@ export async function dealsRoutes(server: FastifyInstance) {
               : null,
           })),
         })),
-        milestones: deal.milestones.map((m) => ({
+        milestones: milestones.map((m) => ({
           id: m.id,
           title: m.title,
           status: m.status,
