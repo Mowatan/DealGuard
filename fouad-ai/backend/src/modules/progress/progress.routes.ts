@@ -3,18 +3,9 @@ import * as progressService from './progress.service';
 import { authenticate } from '../../middleware/auth';
 
 export const progressRoutes: FastifyPluginAsync = async (fastify) => {
-  // Get progress status for a deal
-  fastify.get('/deals/:dealId/progress', {
-    preHandler: [authenticate]
-  }, async (request, reply) => {
-    try {
-      const { dealId } = request.params as { dealId: string };
-      const progress = await progressService.getProgressStatus(dealId);
-      return progress;
-    } catch (error: any) {
-      reply.status(500).send({ error: error.message });
-    }
-  });
+  // REMOVED: Duplicate route - GET /deals/:dealId/progress is already handled in deals.routes.ts
+  // The deals.routes.ts implementation calculates real-time progress from milestones and parties
+  // This was causing: "Method 'GET' already declared for route '/api/deals/:dealId/progress'"
 
   // Initialize progress tracker (auto-called on deal creation, but can be manual)
   fastify.post('/deals/:dealId/progress/initialize', {
