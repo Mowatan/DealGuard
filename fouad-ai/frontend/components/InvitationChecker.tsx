@@ -5,11 +5,11 @@ import { useAuth } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 
 /**
- * InvitationChecker - Auto-accepts pending invitations after signup/login
+ * InvitationChecker - Auto-processes pending invitations after signup/login
  *
  * This component checks localStorage for a pending invitation token.
- * If found and user is authenticated, it automatically accepts the invitation
- * and redirects the user to the deal page.
+ * If found and user is authenticated, it automatically processes the invitation
+ * (accept or decline) and redirects appropriately.
  */
 export function InvitationChecker() {
   const { userId, isLoaded } = useAuth();
@@ -26,36 +26,45 @@ export function InvitationChecker() {
     const pendingToken = localStorage.getItem('pendingInvitation');
     const pendingAction = localStorage.getItem('pendingInvitationAction');
 
-    if (pendingToken && pendingAction === 'accept') {
-      console.log('📨 Found pending invitation, auto-accepting...', pendingToken);
+    if (pendingToken && pendingAction) {
+      console.log(`📨 Found pending invitation, auto-${pendingAction}ing...`, pendingToken);
 
       // Clear localStorage immediately to prevent re-processing
       localStorage.removeItem('pendingInvitation');
       localStorage.removeItem('pendingInvitationAction');
 
-      // Auto-accept the invitation
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/invitations/${pendingToken}/accept`, {
+      // Determine endpoint based on action
+      const endpoint = pendingAction === 'accept' ? 'accept' : 'decline';
+
+      // Auto-process the invitation
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/invitations/${pendingToken}/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include', // Include cookies for authentication
+        body: JSON.stringify(
+          pendingAction === 'decline' ? { reason: 'Declined by user' } : {}
+        ),
       })
         .then((res) => {
           if (!res.ok) {
-            throw new Error('Failed to accept invitation');
+            throw new Error(`Failed to ${pendingAction} invitation`);
           }
           return res.json();
         })
         .then((data) => {
-          console.log('✅ Invitation accepted successfully:', data);
-          if (data.dealId) {
+          console.log(`✅ Invitation ${pendingAction}ed successfully:`, data);
+          if (pendingAction === 'accept' && data.dealId) {
             // Redirect to deal page with success message
             router.push(`/deals/${data.dealId}?message=invitation-accepted`);
+          } else if (pendingAction === 'decline') {
+            // Redirect to home with decline message
+            router.push('/?message=invitation-declined');
           }
         })
         .catch((err) => {
-          console.error('❌ Failed to auto-accept invitation:', err);
+          console.error(`❌ Failed to auto-${pendingAction} invitation:`, err);
           // On error, redirect back to invitation page so user can manually retry
           router.push(`/invitations/${pendingToken}`);
         });

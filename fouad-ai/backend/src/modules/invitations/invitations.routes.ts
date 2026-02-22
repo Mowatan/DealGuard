@@ -200,12 +200,16 @@ export async function invitationsRoutes(server: FastifyInstance) {
     }
   );
 
-  // Decline invitation (public endpoint - no auth required)
+  // Decline invitation (requires authentication)
   server.post(
     '/api/invitations/:token/decline',
+    {
+      preHandler: [authenticate],
+    },
     async (request, reply) => {
       const { token } = request.params as { token: string };
       const { reason } = request.body as { reason?: string };
+      const userId = request.user!.id;
 
       try {
         const party = await dealsService.getPartyByInvitationToken(token);
@@ -218,9 +222,6 @@ export async function invitationsRoutes(server: FastifyInstance) {
         }
 
         // Update party invitation status to DECLINED
-        const { prisma } = await import('../../lib/prisma');
-        const { InvitationStatus } = await import('@prisma/client');
-
         await prisma.party.update({
           where: { id: party.id },
           data: {
@@ -229,12 +230,11 @@ export async function invitationsRoutes(server: FastifyInstance) {
           },
         });
 
-        // Create audit log
-        const { createAuditLog } = await import('../../lib/audit');
+        // Create audit log with actual user ID
         await createAuditLog({
           dealId: party.dealId,
           eventType: 'PARTY_DECLINED_INVITATION',
-          actor: 'SYSTEM', // No user ID since this is a public endpoint
+          actor: userId,
           entityType: 'Party',
           entityId: party.id,
           newState: { invitationStatus: InvitationStatus.DECLINED },

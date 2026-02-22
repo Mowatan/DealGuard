@@ -139,6 +139,17 @@ export default function InvitationAcceptancePage() {
       return;
     }
 
+    if (!isSignedIn) {
+      // Store invitation token in localStorage for processing after signup/login
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pendingInvitation', token);
+        localStorage.setItem('pendingInvitationAction', 'decline');
+      }
+      // Redirect to sign-in (declining is a more negative action, so prefer sign-in over sign-up)
+      router.push(`/sign-in?redirect=${encodeURIComponent(`/invitations/${token}`)}`);
+      return;
+    }
+
     try {
       setDeclining(true);
       setError(null);
@@ -150,6 +161,7 @@ export default function InvitationAcceptancePage() {
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include', // Include cookies for authentication
           body: JSON.stringify({
             reason: 'Declined by user',
           }),
@@ -162,6 +174,12 @@ export default function InvitationAcceptancePage() {
       }
 
       setSuccessMessage('Invitation declined. The deal creator has been notified.');
+
+      // Clear any pending invitation from localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('pendingInvitation');
+        localStorage.removeItem('pendingInvitationAction');
+      }
 
       // Redirect to home after a short delay
       setTimeout(() => {
