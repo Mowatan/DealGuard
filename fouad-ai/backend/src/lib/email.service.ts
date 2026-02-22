@@ -2,6 +2,7 @@ import Mailgun from 'mailgun.js';
 import FormData from 'form-data';
 import fs from 'fs/promises';
 import path from 'path';
+import Handlebars from 'handlebars';
 
 interface EmailOptions {
   to: string | string[];
@@ -93,37 +94,25 @@ class EmailService {
   }
 
   /**
-   * Render template with variables using simple {{variable}} replacement
+   * Render template with variables using Handlebars
+   * Supports {{variable}}, {{#if}}, {{else}}, etc.
    */
   private async renderTemplate(
     templateName: string,
     variables: Record<string, any>
   ): Promise<string> {
-    let template = await this.loadTemplate(templateName);
+    const templateSource = await this.loadTemplate(templateName);
 
-    // Debug: Log variables being replaced
-    console.log(`📧 Rendering template "${templateName}" with variables:`);
+    // Debug: Log variables being used
+    console.log(`📧 Rendering template "${templateName}" with Handlebars`);
     console.log(`   Variables provided:`, Object.keys(variables).join(', '));
 
-    // Replace all {{variable}} placeholders
-    Object.entries(variables).forEach(([key, value]) => {
-      const placeholder = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
-      const stringValue = value !== null && value !== undefined ? String(value) : '';
-      const matchCount = (template.match(placeholder) || []).length;
+    // Compile and render template with Handlebars
+    const template = Handlebars.compile(templateSource);
+    const html = template(variables);
 
-      if (matchCount > 0) {
-        template = template.replace(placeholder, stringValue);
-        console.log(`   ✓ Replaced {{${key}}} (${matchCount} occurrence(s))`);
-      }
-    });
-
-    // Check for unreplaced variables
-    const unreplacedVars = template.match(/{{[^}]+}}/g);
-    if (unreplacedVars && unreplacedVars.length > 0) {
-      console.warn(`⚠️  Unreplaced variables in template "${templateName}":`, unreplacedVars);
-    }
-
-    return template;
+    console.log(`   ✅ Template rendered successfully`);
+    return html;
   }
 
   /**

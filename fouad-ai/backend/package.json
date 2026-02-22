@@ -18,6 +18,7 @@
     "contract:test:mutations": "tsx scripts/contract-test-mutations.ts",
     "test:email": "tsx scripts/test-email.ts",
     "test:deal-email": "tsx scripts/test-deal-email.ts",
+    "test:milestone-emails": "tsx scripts/test-milestone-emails.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
@@ -39,6 +40,7 @@
     "ethers": "^6.11.1",
     "fastify": "^4.26.1",
     "form-data": "^4.0.5",
+    "handlebars": "^4.7.8",
     "ioredis": "^5.3.2",
     "jsonwebtoken": "^9.0.2",
     "mailgun.js": "^12.7.0",
@@ -48,6 +50,7 @@
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
+    "@types/handlebars": "^4.0.40",
     "@types/jsonwebtoken": "^9.0.5",
     "@types/node": "^20.11.17",
     "pino-pretty": "^13.1.3",
