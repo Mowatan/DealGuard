@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { AlertCircle, CheckCircle2, Clock, Users, Mail, XCircle } from 'lucide-react';
 import { storeInvitation, clearInvitation } from '@/lib/invitation-storage';
+import { invitationsApi } from '@/lib/api-client';
 
 interface InvitationData {
   party: {
@@ -59,14 +60,7 @@ export default function InvitationAcceptancePage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/invitations/${token}`);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Invalid or expired invitation');
-      }
-
-      const data = await response.json();
+      const data = await invitationsApi.getByToken(token);
       setInvitation(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load invitation');
@@ -88,23 +82,7 @@ export default function InvitationAcceptancePage() {
       setAccepting(true);
       setError(null);
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/invitations/${token}/accept`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include', // Include cookies for authentication
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to accept invitation');
-      }
-
-      const result = await response.json();
+      const result = await invitationsApi.accept(token);
 
       if (result.alreadyAccepted) {
         setSuccessMessage('You have already accepted this invitation!');
@@ -146,24 +124,7 @@ export default function InvitationAcceptancePage() {
       setDeclining(true);
       setError(null);
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/invitations/${token}/decline`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include', // Include cookies for authentication
-          body: JSON.stringify({
-            reason: 'Declined by user',
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to decline invitation');
-      }
+      await invitationsApi.decline(token, 'Declined by user');
 
       setSuccessMessage('Invitation declined. The deal creator has been notified.');
 

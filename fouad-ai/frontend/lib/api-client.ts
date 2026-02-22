@@ -598,3 +598,82 @@ export const apiClient = {
     return response.json();
   },
 };
+
+// Invitations API
+export const invitationsApi = {
+  /**
+   * Get invitation details by token (public endpoint)
+   */
+  getByToken: (token: string) =>
+    fetchApi<any>(`/api/invitations/${token}`),
+
+  /**
+   * Accept invitation (requires authentication)
+   * Uses credentials: 'include' for cookie-based auth
+   */
+  accept: async (token: string) => {
+    const url = `${API_BASE_URL}/api/invitations/${token}/accept`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include', // Include cookies for authentication
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new ApiError(
+        error.message || error.error || 'Failed to accept invitation',
+        response.status,
+        error,
+        url,
+        'POST'
+      );
+    }
+
+    return response.json() as Promise<{
+      success: boolean;
+      message: string;
+      dealId: string;
+      dealNumber: string;
+      alreadyAccepted?: boolean;
+      allPartiesAccepted: boolean;
+    }>;
+  },
+
+  /**
+   * Decline invitation (requires authentication)
+   * Uses credentials: 'include' for cookie-based auth
+   */
+  decline: async (token: string, reason?: string) => {
+    const url = `${API_BASE_URL}/api/invitations/${token}/decline`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include', // Include cookies for authentication
+      body: JSON.stringify({ reason: reason || 'Declined by user' }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new ApiError(
+        error.message || error.error || 'Failed to decline invitation',
+        response.status,
+        error,
+        url,
+        'POST'
+      );
+    }
+
+    return response.json() as Promise<{
+      success: boolean;
+      message: string;
+      dealNumber: string;
+    }>;
+  },
+};

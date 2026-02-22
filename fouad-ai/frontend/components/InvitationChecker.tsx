@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { getPendingInvitation, clearInvitation } from '@/lib/invitation-storage';
+import { invitationsApi } from '@/lib/api-client';
 
 /**
  * InvitationChecker - Auto-processes pending invitations after signup/login
@@ -39,37 +40,25 @@ export function InvitationChecker() {
       const endpoint = pending.action === 'accept' ? 'accept' : 'decline';
 
       // Auto-process the invitation
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/invitations/${pending.token}/${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Include cookies for authentication
-        body: JSON.stringify(
-          pending.action === 'decline' ? { reason: 'Declined by user' } : {}
-        ),
-      })
-        .then((res) => {
-          if (!res.ok) {
-            throw new Error(`Failed to ${pending.action} invitation`);
-          }
-          return res.json();
-        })
-        .then((data) => {
-          console.log(`✅ Invitation ${pending.action}ed successfully:`, data);
-          if (pending.action === 'accept' && data.dealId) {
-            // Redirect to deal page with success message
+      const processInvitation = async () => {
+        try {
+          if (pending.action === 'accept') {
+            const data = await invitationsApi.accept(pending.token);
+            console.log('✅ Invitation accepted successfully:', data);
             router.push(`/deals/${data.dealId}?message=invitation-accepted`);
-          } else if (pending.action === 'decline') {
-            // Redirect to home with decline message
+          } else {
+            const data = await invitationsApi.decline(pending.token, 'Declined by user');
+            console.log('✅ Invitation declined successfully:', data);
             router.push('/?message=invitation-declined');
           }
-        })
-        .catch((err) => {
+        } catch (err) {
           console.error(`❌ Failed to auto-${pending.action} invitation:`, err);
           // On error, redirect back to invitation page so user can manually retry
           router.push(`/invitations/${pending.token}`);
-        });
+        }
+      };
+
+      processInvitation();
     }
   }, [userId, isLoaded, router]);
 
