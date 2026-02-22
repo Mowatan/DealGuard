@@ -1,9 +1,21 @@
 import { prisma } from '../../lib/prisma';
 import { createAuditLog } from '../../lib/audit';
-import { emailSendingQueue } from '../../lib/email-queue';
-import { getFrontendUrl } from '../../lib/env';
+import { emailSendingQueue } from '../../lib/queue';
 import { Prisma } from '@prisma/client';
 import type { MilestoneResponseType, MilestoneStatus, DealStatus } from '@prisma/client';
+
+// Helper function to get frontend URL
+function getFrontendUrl(): string {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const url = process.env.FRONTEND_URL || (isProduction ? '' : 'http://localhost:3000');
+
+  if (!url && isProduction) {
+    console.error('❌ FRONTEND_URL is not configured in production!');
+    return 'https://dealguard.org'; // Safe fallback for production
+  }
+
+  return url;
+}
 
 interface MilestoneResponseData {
   responseType: 'ACCEPTED' | 'REJECTED' | 'AMENDMENT_PROPOSED';
