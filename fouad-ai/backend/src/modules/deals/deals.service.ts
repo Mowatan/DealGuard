@@ -6,6 +6,7 @@ import { calculateServiceFee, validateServiceTier } from './fee-calculator';
 import crypto from 'crypto';
 import * as progressService from '../progress/progress.service';
 import { canUserAccessDeal } from '../../lib/authorization';
+import { checkAndActivateDeal } from './deal-state-machine.service';
 
 /**
  * Get the frontend base URL from environment
@@ -539,28 +540,10 @@ export async function confirmPartyInvitation(token: string) {
 
   const allPartiesAccepted = pendingCount === 0;
 
-  // If all parties accepted, update deal status
+  // If all parties accepted, use state machine to check activation
   if (allPartiesAccepted) {
-    await prisma.deal.update({
-      where: { id: updatedParty.dealId },
-      data: {
-        allPartiesConfirmed: true,
-        status: DealStatus.ACCEPTED,
-      },
-    });
-
-    // Get or create a system user for audit logs
     const systemUser = await getOrCreateSystemUser();
-
-    // Create audit log
-    await createAuditLog({
-      dealId: updatedParty.dealId,
-      eventType: 'ALL_PARTIES_ACCEPTED',
-      actor: systemUser.id,
-      entityType: 'Deal',
-      entityId: updatedParty.dealId,
-      newState: { allPartiesConfirmed: true },
-    });
+    await checkAndActivateDeal(updatedParty.dealId, systemUser.id);
   }
 
   // Get or create a system user for audit logs
@@ -1523,55 +1506,9 @@ export async function acceptPartyInvitation(params: {
 
   const allAccepted = pendingCount === 0;
 
-  // If all parties accepted, update deal status to ACCEPTED
+  // If all parties accepted, use state machine to check activation
   if (allAccepted) {
-    await prisma.deal.update({
-      where: { id: dealId },
-      data: {
-        status: DealStatus.ACCEPTED,
-        allPartiesConfirmed: true,
-      },
-    });
-
-    // Create audit log
-    await createAuditLog({
-      dealId,
-      eventType: 'DEAL_ACTIVATED',
-      actor: userId,
-      entityType: 'Deal',
-      entityId: dealId,
-      newState: {
-        status: DealStatus.ACCEPTED,
-        allPartiesConfirmed: true,
-      },
-    });
-
-    // Send "deal active" emails to all parties
-    const baseUrl = getFrontendUrl();
-    const allParties = await prisma.party.findMany({
-      where: { dealId: dealId },
-      select: { id: true, name: true, contactEmail: true }
-    });
-
-    for (const p of allParties) {
-      await emailSendingQueue.add(
-        'send-deal-active',
-        {
-          to: p.contactEmail,
-          subject: `Deal ${party.deal.dealNumber} Is Now Active`,
-          template: 'deal-active',
-          variables: {
-            recipientName: p.name,
-            dealNumber: party.deal.dealNumber,
-            dealTitle: party.deal.title,
-            dealUrl: `${baseUrl}/deals/${dealId}`,
-          },
-          dealId,
-          priority: 5,
-        },
-        { priority: 5 }
-      );
-    }
+    await checkAndActivateDeal(dealId, userId);
   }
 
   // Create audit log for party acceptance

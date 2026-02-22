@@ -2,7 +2,8 @@ import { prisma } from '../../lib/prisma';
 import { createAuditLog } from '../../lib/audit';
 import { emailSendingQueue } from '../../lib/queue';
 import { Prisma } from '@prisma/client';
-import type { MilestoneResponseType, MilestoneStatus, DealStatus } from '@prisma/client';
+import type { MilestoneResponseType, MilestoneStatus } from '@prisma/client';
+import { checkAndActivateDeal } from '../deals/deal-state-machine.service';
 
 // Helper function to get frontend URL
 function getFrontendUrl(): string {
@@ -190,75 +191,8 @@ async function updateMilestoneStatus(milestoneId: string): Promise<void> {
     await sendMilestoneAcceptedNotifications(milestoneId);
   }
 
-  // Check if all milestones are approved → activate deal
-  await checkAndActivateDeal(milestone.contract.dealId);
-}
-
-/**
- * Check if deal is fully negotiated and activate it (internal)
- */
-async function checkAndActivateDeal(dealId: string): Promise<void> {
-  // Get deal with parties and milestones
-  const deal = await prisma.deal.findUnique({
-    where: { id: dealId },
-    include: {
-      parties: true,
-      contracts: {
-        where: { isEffective: true },
-        include: {
-          milestones: true,
-        },
-      },
-    },
-  });
-
-  if (!deal) return;
-
-  // Check 1: All parties accepted invitations
-  const allPartiesAccepted = deal.parties.every(p => p.invitationStatus === 'ACCEPTED');
-  if (!allPartiesAccepted) {
-    console.log(`⏳ Deal ${deal.dealNumber}: Waiting for all parties to accept invitations`);
-    return;
-  }
-
-  // Check 2: All milestones approved
-  const contract = deal.contracts[0];
-  if (!contract || contract.milestones.length === 0) {
-    console.log(`⏳ Deal ${deal.dealNumber}: No milestones to negotiate`);
-    return;
-  }
-
-  const allMilestonesApproved = contract.milestones.every(m => m.status === 'APPROVED');
-  if (!allMilestonesApproved) {
-    const pendingCount = contract.milestones.filter(m => m.status !== 'APPROVED').length;
-    console.log(`⏳ Deal ${deal.dealNumber}: ${pendingCount} milestones still pending`);
-    return;
-  }
-
-  // All conditions met - activate deal!
-  await prisma.deal.update({
-    where: { id: dealId },
-    data: { status: 'ACCEPTED' as DealStatus },
-  });
-
-  // Create audit log
-  await createAuditLog({
-    dealId,
-    eventType: 'DEAL_FULLY_NEGOTIATED',
-    actor: 'SYSTEM',
-    entityType: 'Deal',
-    entityId: dealId,
-    newState: { status: 'ACCEPTED' },
-    metadata: {
-      reason: 'All parties agreed on all milestones',
-      milestonesCount: contract.milestones.length,
-    },
-  });
-
-  console.log(`✅ Deal ${deal.dealNumber} ACTIVATED - all milestones negotiated!`);
-
-  // Send activation emails to all parties
-  await sendDealFullyNegotiatedEmails(dealId);
+  // Check if all milestones are approved → activate deal (using centralized state machine)
+  await checkAndActivateDeal(milestone.contract.dealId, 'SYSTEM');
 }
 
 /**
@@ -558,42 +492,4 @@ async function sendMilestoneAcceptedNotifications(milestoneId: string): Promise<
   console.log(`🎉 Sent milestone accepted notifications for Milestone ${milestone.order}`);
 }
 
-/**
- * Send deal fully negotiated emails
- */
-async function sendDealFullyNegotiatedEmails(dealId: string): Promise<void> {
-  const deal = await prisma.deal.findUnique({
-    where: { id: dealId },
-    include: {
-      parties: true,
-      contracts: {
-        where: { isEffective: true },
-        include: { milestones: true },
-      },
-    },
-  });
-
-  if (!deal) return;
-
-  const contract = deal.contracts[0];
-  const milestonesCount = contract?.milestones.length || 0;
-
-  for (const party of deal.parties) {
-    await emailSendingQueue.add('send-deal-fully-negotiated', {
-      to: party.contactEmail,
-      subject: `Deal Activated: ${deal.dealNumber}`,
-      template: 'deal-fully-negotiated',
-      variables: {
-        partyName: party.name,
-        dealNumber: deal.dealNumber,
-        dealTitle: deal.title || deal.dealNumber,
-        milestonesCount,
-        dealLink: `${getFrontendUrl()}/deals/${deal.id}`,
-      },
-      dealId: deal.id,
-      priority: 5,
-    });
-  }
-
-  console.log(`🎉 Sent deal fully negotiated emails for ${deal.dealNumber}`);
-}
+// Deal activation emails now handled by deal-state-machine.service.ts
