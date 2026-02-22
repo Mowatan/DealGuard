@@ -5,11 +5,13 @@ import { UserRole } from '@prisma/client';
  * Role hierarchy (higher roles include permissions of lower roles)
  */
 const ROLE_HIERARCHY: Record<UserRole, number> = {
-  PARTY_USER: 1,
-  CASE_OFFICER: 2,
-  ESCROW_OFFICER: 2,
-  ADMIN: 3,
-  SUPER_ADMIN: 4,
+  USER: 1,                      // Regular user (party in deals)
+  PARTY_USER: 1,                // Legacy role - same as USER
+  ESCROW_OFFICER: 2,            // Level 1: Can review, suggest, recommend
+  CASE_OFFICER: 2,              // Legacy role - same level as ESCROW_OFFICER
+  SENIOR_ESCROW_OFFICER: 3,     // Level 2: Can approve/reject officer recommendations
+  ADMIN: 3,                     // Legacy admin role
+  SUPER_ADMIN: 4,               // Level 3: Override everything, manage authority
 };
 
 /**
@@ -74,6 +76,16 @@ export const requireSuperAdmin = authorize(['SUPER_ADMIN']);
  * Convenience middleware for case officer and above
  */
 export const requireCaseOfficer = authorize(['CASE_OFFICER']);
+
+/**
+ * Convenience middleware for escrow officer and above
+ */
+export const requireEscrowOfficer = authorize(['ESCROW_OFFICER']);
+
+/**
+ * Convenience middleware for senior escrow officer and above
+ */
+export const requireSeniorEscrowOfficer = authorize(['SENIOR_ESCROW_OFFICER']);
 
 /**
  * Check if user is authenticated (any role)

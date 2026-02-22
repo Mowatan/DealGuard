@@ -22,6 +22,7 @@ import { custodyDocumentsRoutes } from './modules/custody-documents/custody-docu
 import { progressRoutes } from './modules/progress/progress.routes';
 import { testCorsRoutes } from './modules/test/test-cors.routes';
 import { invitationsRoutes } from './modules/invitations/invitations.routes';
+import { approvalRoutes } from './modules/approvals/approval.routes';
 
 config();
 
@@ -222,6 +223,7 @@ async function start() {
     await server.register(kycRoutes);
     await server.register(disputesRoutes);
     await server.register(progressRoutes, { prefix: '/api' });
+    await server.register(approvalRoutes); // Approval governance system
 
     // Register centralized error handler (MUST be after all routes)
     const { errorHandler } = await import('./middleware/error-handler');
