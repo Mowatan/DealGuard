@@ -1,7 +1,8 @@
-import { prisma } from '../../lib/prisma.js';
-import { createAuditLog } from '../audit/audit.service.js';
-import { emailSendingQueue } from '../../lib/email-queue.js';
-import { getFrontendUrl } from '../../lib/env.js';
+import { prisma } from '../../lib/prisma';
+import { createAuditLog } from '../../lib/audit';
+import { emailSendingQueue } from '../../lib/email-queue';
+import { getFrontendUrl } from '../../lib/env';
+import { Prisma } from '@prisma/client';
 import type { MilestoneResponseType, MilestoneStatus, DealStatus } from '@prisma/client';
 
 interface MilestoneResponseData {
@@ -80,12 +81,12 @@ export async function submitMilestoneResponse(
       milestoneId,
       partyId,
       responseType: responseData.responseType as MilestoneResponseType,
-      amendmentProposal: responseData.amendmentProposal || null,
+      amendmentProposal: responseData.amendmentProposal ? responseData.amendmentProposal as any : Prisma.JsonNull,
       notes: responseData.notes || null,
     },
     update: {
       responseType: responseData.responseType as MilestoneResponseType,
-      amendmentProposal: responseData.amendmentProposal || null,
+      amendmentProposal: responseData.amendmentProposal ? responseData.amendmentProposal as any : Prisma.JsonNull,
       notes: responseData.notes || null,
       respondedAt: new Date(),
     },
@@ -308,7 +309,11 @@ export async function getDealMilestoneNegotiationStatus(dealId: string, userId: 
   const deal = await prisma.deal.findUnique({
     where: { id: dealId },
     include: {
-      parties: true,
+      parties: {
+        include: {
+          members: true,
+        },
+      },
       contracts: {
         where: { isEffective: true },
         include: {

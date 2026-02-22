@@ -1,13 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { authenticate } from '../../middleware/auth.js';
+import { Prisma } from '@prisma/client';
+import { authenticate } from '../../middleware/auth';
 import {
   submitMilestoneResponse,
   getMilestoneResponses,
   getDealMilestoneNegotiationStatus,
-} from './milestone-negotiation.service.js';
-import { prisma } from '../../lib/prisma.js';
-import { getPartyByInvitationToken } from '../deals/deals.service.js';
+} from './milestone-negotiation.service';
+import { prisma } from '../../lib/prisma';
+import { getPartyByInvitationToken } from '../deals/deals.service';
 
 // ============================================================================
 // ZOD SCHEMAS
@@ -232,12 +233,12 @@ export async function milestoneNegotiationRoutes(server: FastifyInstance) {
                 milestoneId: responseData.milestoneId,
                 partyId: party.id,
                 responseType: responseData.responseType,
-                amendmentProposal: responseData.amendmentProposal || null,
+                amendmentProposal: responseData.amendmentProposal ? responseData.amendmentProposal as any : Prisma.JsonNull,
                 notes: responseData.notes || null,
               },
               update: {
                 responseType: responseData.responseType,
-                amendmentProposal: responseData.amendmentProposal || null,
+                amendmentProposal: responseData.amendmentProposal ? responseData.amendmentProposal as any : Prisma.JsonNull,
                 notes: responseData.notes || null,
                 respondedAt: new Date(),
               },
