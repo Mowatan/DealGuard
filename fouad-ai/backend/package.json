@@ -17,7 +17,10 @@
     "contract:test": "tsx scripts/contract-test.ts",
     "contract:test:mutations": "tsx scripts/contract-test-mutations.ts",
     "test:email": "tsx scripts/test-email.ts",
-    "test:deal-email": "tsx scripts/test-deal-email.ts"
+    "test:deal-email": "tsx scripts/test-deal-email.ts",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.74.0",
