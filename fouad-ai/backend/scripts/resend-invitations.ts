@@ -38,7 +38,7 @@ async function resendInvitations(dealId: string) {
         continue;
       }
 
-      const confirmationLink = `${baseUrl}/confirm-invitation/${party.invitationToken}`;
+      const confirmationLink = `${baseUrl}/invitations/${party.invitationToken}`;
 
       console.log(`📧 Sending invitation to: ${party.name} (${party.contactEmail})`);
 

@@ -119,7 +119,7 @@ async function createTestDeal() {
     const creatorName = testUser.name || 'Test Creator';
 
     for (const party of deal.parties) {
-      const confirmationLink = `${baseUrl}/confirm-invitation/${party.invitationToken}`;
+      const confirmationLink = `${baseUrl}/invitations/${party.invitationToken}`;
 
       console.log(`\n   📧 Sending invitation to: ${party.contactEmail}`);
       console.log(`      Role: ${party.role}`);

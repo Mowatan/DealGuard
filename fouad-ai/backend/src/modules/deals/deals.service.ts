@@ -228,7 +228,7 @@ export async function createDeal(params: CreateDealParams) {
       );
     } else {
       // Send invitation email to other parties
-      const confirmationLink = `${baseUrl}/confirm-invitation/${party.invitationToken}`;
+      const confirmationLink = `${baseUrl}/invitations/${party.invitationToken}`;
 
       await emailSendingQueue.add(
         'send-party-invitation',
@@ -487,6 +487,11 @@ export async function getDealAuditTrail(dealId: string, userId: string) {
   return getAuditTrail(dealId);
 }
 
+/**
+ * @deprecated This function is deprecated. Use the new invitation flow:
+ * POST /api/invitations/:token/accept (requires authentication)
+ * This function remains for backwards compatibility with old test scripts only.
+ */
 export async function confirmPartyInvitation(token: string) {
   // Find the party by invitation token
   const party = await prisma.party.findUnique({
