@@ -4,6 +4,7 @@ import { createAuditLog } from '../../lib/audit';
 import { aiSuggestionQueue, emailSendingQueue } from '../../lib/queue';
 import { EvidenceStatus } from '@prisma/client';
 import { canUserAccessDeal, canUserAccessEvidence, isAdminOrCaseOfficer } from '../../lib/authorization';
+import { getAdminEmails } from '../../lib/admin-cache';
 
 interface CreateEvidenceParams {
   dealId: string;
@@ -405,24 +406,14 @@ async function quarantineEvidence(
   });
 
   // Send alert to admins
-  const admins = await prisma.user.findMany({
-    where: {
-      role: {
-        in: ['ADMIN', 'SUPER_ADMIN'],
-      },
-    },
-    select: {
-      email: true,
-    },
-  });
+  const adminEmails = await getAdminEmails(); // PERFORMANCE: Use cached admin emails
 
   const deal = await prisma.deal.findUnique({
     where: { id: dealId },
     select: { dealNumber: true, title: true },
   });
 
-  if (admins.length > 0 && deal) {
-    const adminEmails = admins.map(admin => admin.email);
+  if (adminEmails.length > 0 && deal) {
 
     for (const email of adminEmails) {
       await emailSendingQueue.add(

@@ -341,6 +341,7 @@ export async function listDeals(options: {
       include: {
         parties: true,
         contracts: {
+          where: { isEffective: true }, // PERFORMANCE: Only load effective contract
           include: {
             milestones: {
               select: {
@@ -349,6 +350,7 @@ export async function listDeals(options: {
               },
             },
           },
+          take: 1, // Only need one effective contract
         },
         _count: {
           select: {
@@ -366,7 +368,7 @@ export async function listDeals(options: {
 
   // Calculate progress percentage for each deal
   const dealsWithProgress = deals.map((deal) => {
-    const contract = deal.contracts.find((c) => c.isEffective) || deal.contracts[deal.contracts.length - 1];
+    const contract = deal.contracts[0]; // First (and only) effective contract
     const milestones = contract?.milestones || [];
 
     const totalMilestones = milestones.length;

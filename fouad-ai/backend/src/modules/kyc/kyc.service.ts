@@ -241,6 +241,7 @@ export async function listPendingKYC() {
     orderBy: {
       updatedAt: 'asc', // Oldest first
     },
+    take: 100, // PERFORMANCE: Limit to 100 oldest pending KYC requests
   });
 }
 

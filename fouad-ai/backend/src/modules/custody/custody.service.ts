@@ -5,6 +5,7 @@ import { blockchainAnchorQueue, emailSendingQueue } from '../../lib/queue';
 import { CustodyStatus } from '@prisma/client';
 import { createHash } from 'crypto';
 import { canUserAccessDeal, canUserAccessCustodyRecord, isAdmin, isAdminOrCaseOfficer } from '../../lib/authorization';
+import { getAdminEmails } from '../../lib/admin-cache';
 
 // Constants
 const EMAIL_PRIORITIES = {
@@ -50,15 +51,7 @@ interface BlockchainAnchorData {
 }
 
 // Helper Functions
-async function getAdminEmails(): Promise<string[]> {
-  const admins = await prisma.user.findMany({
-    where: {
-      role: { in: [...ADMIN_ROLES] },
-    },
-    select: { email: true },
-  });
-  return admins.map(admin => admin.email);
-}
+// NOTE: getAdminEmails() is now imported from admin-cache.ts for performance (caching)
 
 async function queueEmailNotification(
   jobName: string,
@@ -493,5 +486,6 @@ export async function listCustodyRecords(dealId: string, userId: string) {
   return prisma.custodyRecord.findMany({
     where: { dealId },
     orderBy: { createdAt: 'desc' },
+    take: 50, // PERFORMANCE: Limit to 50 most recent custody records
   });
 }
