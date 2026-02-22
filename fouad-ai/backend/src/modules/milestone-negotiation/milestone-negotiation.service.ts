@@ -440,31 +440,65 @@ async function sendMilestoneResponseNotifications(
   const respondingParty = deal.parties.find(p => p.id === respondingPartyId);
   const otherParties = deal.parties.filter(p => p.id !== respondingPartyId);
 
+  // Determine template and subject based on response type
+  let template: string;
+  let subject: string;
+  let emailVariables: any;
+
+  const baseVariables = {
+    recipientName: '',
+    partyName: respondingParty?.name || 'A party',
+    milestoneOrder: milestone.order,
+    milestoneTitle: milestone.title || `Milestone ${milestone.order}`,
+    dealTitle: deal.title || deal.dealNumber,
+    dealNumber: deal.dealNumber,
+    currency: milestone.currency,
+    amount: milestone.amount?.toString() || '0',
+    notes: response.notes || '',
+    dealLink: `${getFrontendUrl()}/deals/${deal.id}`,
+  };
+
+  if (response.responseType === 'REJECTED') {
+    template = 'milestone-rejected';
+    subject = `Milestone Rejected: ${deal.dealNumber}`;
+  } else if (response.responseType === 'AMENDMENT_PROPOSED') {
+    template = 'milestone-amendment-proposed';
+    subject = `Amendment Proposed: ${deal.dealNumber}`;
+    // Add amendment proposal details
+    const proposal = response.amendmentProposal as any;
+    emailVariables = {
+      ...baseVariables,
+      newAmount: proposal?.newAmount?.toString() || '',
+      newDeadline: proposal?.newDeadline || '',
+      newDescription: proposal?.newDescription || '',
+      reason: proposal?.reason || '',
+    };
+  } else {
+    // ACCEPTED or other response types
+    template = 'milestone-response-needed';
+    subject = `Milestone Response: ${deal.dealNumber}`;
+    emailVariables = {
+      ...baseVariables,
+      responseType: response.responseType,
+    };
+  }
+
   // Send to other parties
   for (const party of otherParties) {
-    await emailSendingQueue.add('send-milestone-response-received', {
+    await emailSendingQueue.add(`send-${template}`, {
       to: party.contactEmail,
-      subject: `Milestone Response: ${deal.dealNumber}`,
-      template: 'milestone-response-received',
+      subject,
+      template,
       variables: {
+        ...emailVariables,
         recipientName: party.name,
-        partyName: respondingParty?.name || 'A party',
-        milestoneOrder: milestone.order,
-        milestoneTitle: milestone.title || `Milestone ${milestone.order}`,
-        dealTitle: deal.title || deal.dealNumber,
-        dealNumber: deal.dealNumber,
-        currency: milestone.currency,
-        amount: milestone.amount?.toString() || '0',
-        responseType: response.responseType,
-        notes: response.notes || '',
-        dealLink: `${getFrontendUrl()}/deals/${deal.id}`,
       },
       dealId: deal.id,
       priority: 5,
     });
   }
 
-  console.log(`📧 Sent milestone response notifications for Milestone ${milestone.order}`);
+  console.log(`📧 Sent ${response.responseType} notifications for Milestone ${milestone.order}`);
 }
 
 /**
