@@ -74,6 +74,7 @@ model Organization {
 enum DealStatus {
   CREATED
   INVITED
+  PENDING_NEGOTIATION  // Parties accepted, milestone negotiation in progress
   ACCEPTED
   FUNDED
   IN_PROGRESS
@@ -259,6 +260,7 @@ model Party {
   @@index([dealId])
   @@index([invitationToken])
   @@index([invitationStatus])
+  @@index([organizationId])
 }
 
 model PartyMember {
@@ -275,6 +277,7 @@ model PartyMember {
 
   @@unique([partyId, userId])
   @@index([userId])
+  @@index([partyId])
 }
 
 // ============================================================================
@@ -323,6 +326,7 @@ model ContractAcceptance {
 
   @@unique([contractId, partyId])
   @@index([contractId])
+  @@index([partyId])
 }
 
 // ============================================================================
