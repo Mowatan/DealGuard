@@ -57,11 +57,15 @@ export async function invitationsRoutes(server: FastifyInstance) {
             })),
           },
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error fetching invitation:', error);
+        const message = error instanceof Error
+          ? error.message
+          : 'An unexpected error occurred';
+
         return reply.code(500).send({
           error: 'Failed to fetch invitation details',
-          message: error.message
+          message
         });
       }
     }
@@ -190,11 +194,15 @@ export async function invitationsRoutes(server: FastifyInstance) {
           dealNumber: party.deal.dealNumber,
           allPartiesAccepted: allAccepted,
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error accepting invitation:', error);
+        const message = error instanceof Error
+          ? error.message
+          : 'An unexpected error occurred';
+
         return reply.code(500).send({
           error: 'Failed to accept invitation',
-          message: error.message,
+          message,
         });
       }
     }
@@ -252,11 +260,15 @@ export async function invitationsRoutes(server: FastifyInstance) {
           message: 'Invitation declined successfully.',
           dealNumber: party.deal.dealNumber,
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error declining invitation:', error);
+        const message = error instanceof Error
+          ? error.message
+          : 'An unexpected error occurred';
+
         return reply.code(500).send({
           error: 'Failed to decline invitation',
-          message: error.message
+          message
         });
       }
     }
