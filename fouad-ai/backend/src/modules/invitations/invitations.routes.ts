@@ -1,10 +1,10 @@
 import { FastifyInstance } from 'fastify';
-import * as dealsService from '../deals/deals.service';
 import { authenticate } from '../../middleware/auth';
 import { prisma } from '../../lib/prisma';
 import { InvitationStatus } from '@prisma/client';
 import { createAuditLog } from '../../lib/audit';
 import { checkAndActivateDeal, initializeMilestoneNegotiation } from '../deals/deal-state-machine.service';
+import { findPartyByInvitationToken } from '../../repositories/party.repository';
 
 /**
  * Invitation acceptance routes
@@ -23,7 +23,7 @@ export async function invitationsRoutes(server: FastifyInstance) {
       const { token } = request.params as { token: string };
 
       try {
-        const party = await dealsService.getPartyByInvitationToken(token);
+        const party = await findPartyByInvitationToken(token);
 
         if (!party) {
           return reply.code(404).send({
@@ -209,7 +209,7 @@ export async function invitationsRoutes(server: FastifyInstance) {
       const userId = request.user!.id;
 
       try {
-        const party = await dealsService.getPartyByInvitationToken(token);
+        const party = await findPartyByInvitationToken(token);
 
         if (!party) {
           return reply.code(404).send({

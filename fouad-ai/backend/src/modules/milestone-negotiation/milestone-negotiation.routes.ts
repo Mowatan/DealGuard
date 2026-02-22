@@ -9,7 +9,7 @@ import {
   getDealMilestoneNegotiationStatus,
 } from './milestone-negotiation.service';
 import { prisma } from '../../lib/prisma';
-import { getPartyByInvitationToken } from '../deals/deals.service';
+import { findPartyByInvitationToken } from '../../repositories/party.repository';
 
 // ============================================================================
 // ZOD SCHEMAS
@@ -54,7 +54,7 @@ export async function milestoneNegotiationRoutes(server: FastifyInstance) {
       const { token } = request.params as { token: string };
 
       try {
-        const party = await getPartyByInvitationToken(token);
+        const party = await findPartyByInvitationToken(token);
 
         if (!party) {
           return reply.code(404).send({
@@ -198,7 +198,7 @@ export async function milestoneNegotiationRoutes(server: FastifyInstance) {
         const body = batchResponseSchema.parse(request.body);
 
         // Get party by token
-        const party = await getPartyByInvitationToken(token);
+        const party = await findPartyByInvitationToken(token);
 
         if (!party) {
           return reply.code(404).send({

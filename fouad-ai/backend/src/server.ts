@@ -223,6 +223,10 @@ async function start() {
     await server.register(disputesRoutes);
     await server.register(progressRoutes, { prefix: '/api' });
 
+    // Register centralized error handler (MUST be after all routes)
+    const { errorHandler } = await import('./middleware/error-handler');
+    server.setErrorHandler(errorHandler);
+
     const port = parseInt(process.env.PORT || '4000', 10);
     await server.listen({ port, host: '0.0.0.0' });
     

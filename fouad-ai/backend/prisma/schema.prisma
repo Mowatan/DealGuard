@@ -13,11 +13,13 @@ datasource db {
 // ============================================================================
 
 enum UserRole {
-  SUPER_ADMIN
-  ADMIN
-  CASE_OFFICER
-  PARTY_USER
-  ESCROW_OFFICER
+  USER                    // Regular user (party in deals)
+  ESCROW_OFFICER         // Level 1: Can review, suggest, recommend
+  SENIOR_ESCROW_OFFICER  // Level 2: Can approve/reject officer recommendations
+  SUPER_ADMIN            // Level 3: Override everything, manage authority
+  ADMIN                  // Legacy admin role
+  CASE_OFFICER           // Legacy case officer role
+  PARTY_USER             // Legacy party user role
 }
 
 model User {
@@ -31,6 +33,11 @@ model User {
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
 
+  // Authority delegation
+  delegatedAuthority Json? // What can this user approve independently
+  assignedBy         String?   // Who delegated authority
+  assignedAt         DateTime?
+
   // Relations
   createdDeals       Deal[]              @relation("CreatedDeals")
   partyMemberships   PartyMember[]
@@ -41,6 +48,15 @@ model User {
   milestoneApprovals MilestoneApproval[]
   receivedDocuments  CustodyDocument[]   @relation("ReceivedDocuments")
   escrowAssignments  EscrowAssignment[]  @relation("EscrowAssignments")
+
+  // Approval workflow relations
+  requestedApprovals  ApprovalRequest[] @relation("RequestedApprovals")
+  officerReviews      ApprovalRequest[] @relation("OfficerReviews")
+  seniorReviews       ApprovalRequest[] @relation("SeniorReviews")
+  adminOverrides      ApprovalRequest[] @relation("AdminOverrides")
+  auditLogActions     ApprovalAuditLog[]
+  delegatedAuthorities AuthorityDelegation[] @relation("DelegatedAuthorities")
+  delegatorOf          AuthorityDelegation[] @relation("DelegatedByUser")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -171,6 +187,7 @@ model Deal {
   deletionRequests  DealDeletionRequest[]
   progressEvents    DealProgressEvent[]
   escrowAssignment  EscrowAssignment?
+  approvalRequests  ApprovalRequest[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -1177,4 +1194,137 @@ model EscrowAssignment {
   lastUpdatedAt   DateTime @updatedAt
 
   @@index([escrowOfficerId])
+}
+
+// ============================================================================
+// HIERARCHICAL APPROVAL GOVERNANCE SYSTEM
+// ============================================================================
+
+enum ApprovalStatus {
+  PENDING
+  OFFICER_RECOMMENDED_APPROVE
+  OFFICER_RECOMMENDED_REJECT
+  SENIOR_APPROVED
+  SENIOR_REJECTED
+  ADMIN_OVERRIDDEN
+  WITHDRAWN
+}
+
+enum ApprovalType {
+  DEAL_ACTIVATION
+  MILESTONE_APPROVAL
+  FUND_RELEASE
+  DISPUTE_RESOLUTION
+  CONTRACT_MODIFICATION
+  PARTY_REMOVAL
+  DEAL_CANCELLATION
+}
+
+model ApprovalRequest {
+  id String @id @default(cuid())
+
+  // What needs approval
+  type ApprovalType
+  dealId String
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  // Request details
+  requestedBy String
+  requestedByUser User @relation("RequestedApprovals", fields: [requestedBy], references: [id])
+  reason String
+  details Json? // Additional context
+
+  // Workflow stages
+  status ApprovalStatus @default(PENDING)
+
+  // Officer review (Level 1)
+  officerId String?
+  officer User? @relation("OfficerReviews", fields: [officerId], references: [id])
+  officerRecommendation String? // APPROVE or REJECT
+  officerNotes String?
+  officerReviewedAt DateTime?
+
+  // Senior officer review (Level 2)
+  seniorOfficerId String?
+  seniorOfficer User? @relation("SeniorReviews", fields: [seniorOfficerId], references: [id])
+  seniorDecision String? // APPROVE or REJECT
+  seniorNotes String?
+  seniorReviewedAt DateTime?
+
+  // Admin override (Level 3)
+  adminOverrideBy String?
+  adminOverrideUser User? @relation("AdminOverrides", fields: [adminOverrideBy], references: [id])
+  adminOverrideReason String?
+  adminOverriddenAt DateTime?
+
+  // Final outcome
+  finalDecision String? // APPROVED, REJECTED, WITHDRAWN
+  completedAt DateTime?
+
+  // Relations
+  auditLogs ApprovalAuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dealId])
+  @@index([status])
+  @@index([type])
+  @@index([requestedBy])
+  @@index([officerId])
+  @@index([seniorOfficerId])
+}
+
+model ApprovalAuditLog {
+  id String @id @default(cuid())
+
+  approvalRequestId String
+  approvalRequest ApprovalRequest @relation(fields: [approvalRequestId], references: [id], onDelete: Cascade)
+
+  action String // CREATED, ASSIGNED, REVIEWED, DECIDED, OVERRIDDEN
+  performedBy String
+  performer User @relation(fields: [performedBy], references: [id])
+
+  previousStatus ApprovalStatus?
+  newStatus ApprovalStatus
+
+  notes String?
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([approvalRequestId])
+  @@index([performedBy])
+  @@index([createdAt])
+}
+
+model AuthorityDelegation {
+  id String @id @default(cuid())
+
+  delegatedTo String
+  user User @relation("DelegatedAuthorities", fields: [delegatedTo], references: [id])
+
+  delegatedBy String
+  delegator User @relation("DelegatedByUser", fields: [delegatedBy], references: [id])
+
+  // What can they approve
+  approvalTypes String[] // Array of ApprovalType strings
+  maxAmount Decimal? @db.Decimal(15, 2) // Max transaction value they can approve
+  requiresSeniorReview Boolean @default(true)
+
+  // Validity
+  validFrom DateTime @default(now())
+  validUntil DateTime?
+  isActive Boolean @default(true)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([delegatedTo])
+  @@index([delegatedBy])
+  @@index([isActive])
+  @@index([validFrom])
+  @@index([validUntil])
 }
