@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Milestone Rejected - DealGuard</title>
+  <style>
+    body{margin:0;padding:0;font-family:Arial,sans-serif;font-size:16px;line-height:1.5;color:#1f2937;background:#f3f4f6}
+    .wrap{width:100%;background:#f3f4f6;padding:20px}
+    .container{max-width:600px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,0.1)}
+    .header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px;text-align:center}
+    .header h1{margin:0;font-size:28px;font-weight:700;color:#fff}
+    .header p{margin:4px 0 0;font-size:13px;color:#e0e7ff}
+    .content{padding:30px}
+    .greeting{margin:0 0 20px;font-size:17px;color:#374151;font-weight:500}
+    .badge{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);color:#fff;padding:12px 20px;border-radius:8px;text-align:center;margin:0 0 24px}
+    .badge .icon{font-size:24px;margin-bottom:6px}
+    .badge h2{margin:0;font-size:19px;font-weight:600}
+    .badge p{margin:4px 0 0;font-size:13px;opacity:0.9}
+    .msg{margin:0 0 20px;color:#4b5563;font-size:15px}
+    .msg strong{color:#1f2937;font-weight:600}
+    .details{background:#f9fafb;border:2px solid #e5e7eb;border-radius:8px;padding:20px;margin:24px 0}
+    .details h3{margin:0 0 16px;font-size:14px;font-weight:600;color:#6b7280;text-transform:uppercase}
+    .row{display:flex;padding:10px 0;border-bottom:1px solid #e5e7eb}
+    .row:last-child{border-bottom:none}
+    .label{flex:0 0 40%;font-weight:600;color:#374151;font-size:14px}
+    .value{flex:1;color:#6b7280;font-size:14px}
+    .value strong{color:#1f2937;font-weight:700}
+    .reason-box{background:#fef2f2;border-left:4px solid #ef4444;padding:16px;margin:20px 0;border-radius:4px}
+    .reason-box h4{margin:0 0 8px;font-size:14px;font-weight:600;color:#991b1b}
+    .reason-box p{margin:0;font-size:14px;color:#7f1d1d;font-style:italic}
+    .action{background:#fef2f2;border-left:4px solid #ef4444;padding:16px;margin:20px 0;border-radius:4px}
+    .action h4{margin:0 0 6px;font-size:14px;font-weight:600;color:#991b1b}
+    .action p{margin:0;font-size:13px;color:#7f1d1d}
+    .next-steps{background:#ecfdf5;border:2px solid #10b981;border-radius:8px;padding:20px;margin:24px 0}
+    .next-steps h3{margin:0 0 12px;font-size:14px;font-weight:600;color:#065f46;text-transform:uppercase}
+    .next-steps ul{margin:0;padding:0 0 0 20px;color:#047857}
+    .next-steps li{margin:8px 0;font-size:14px}
+    .cta{text-align:center;margin:30px 0}
+    .btn{display:inline-block;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;text-decoration:none;padding:16px 40px;border-radius:8px;font-weight:700;font-size:16px;box-shadow:0 4px 12px rgba(102,126,234,0.4)}
+    .footer{background:#f9fafb;padding:24px;text-align:center;border-top:1px solid #e5e7eb}
+    .footer p{margin:0 0 6px;font-size:12px;color:#6b7280}
+    .footer .name{font-weight:600;color:#374151}
+    .footer .legal{font-size:10px;color:#9ca3af;margin-top:12px}
+    .footer a{color:#667eea;text-decoration:none}
+    @media(max-width:600px){
+      .wrap{padding:10px}
+      .content{padding:20px}
+      .header{padding:20px}
+      .row{flex-direction:column}
+      .label{margin-bottom:4px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+      <tr>
+        <td align="center">
+          <table class="container" cellspacing="0" cellpadding="0" border="0" width="600">
+            <tr>
+              <td class="header">
+                <h1>DealGuard</h1>
+                <p>Secure Transaction Platform</p>
+              </td>
+            </tr>
+            <tr>
+              <td class="content">
+                <p class="greeting">Hello {{recipientName}},</p>
+
+                <div class="badge">
+                  <div class="icon">✗</div>
+                  <h2>Milestone Rejected</h2>
+                  <p>{{partyName}} cannot agree to terms</p>
+                </div>
+
+                <p class="msg"><strong>{{partyName}}</strong> has rejected <strong>Milestone {{milestoneOrder}}: {{milestoneTitle}}</strong> in deal <strong>{{dealNumber}}</strong>.</p>
+
+                <div class="details">
+                  <h3>Rejected Milestone</h3>
+                  <div class="row">
+                    <div class="label">Deal Number</div>
+                    <div class="value"><strong>{{dealNumber}}</strong></div>
+                  </div>
+                  <div class="row">
+                    <div class="label">Deal Title</div>
+                    <div class="value"><strong>{{dealTitle}}</strong></div>
+                  </div>
+                  <div class="row">
+                    <div class="label">Milestone</div>
+                    <div class="value">Milestone {{milestoneOrder}}: {{milestoneTitle}}</div>
+                  </div>
+                  <div class="row">
+                    <div class="label">Amount</div>
+                    <div class="value"><strong>{{currency}} {{amount}}</strong></div>
+                  </div>
+                  <div class="row">
+                    <div class="label">Rejected By</div>
+                    <div class="value">{{partyName}}</div>
+                  </div>
+                </div>
+
+                {{#if notes}}
+                <div class="reason-box">
+                  <h4>💬 Rejection Reason</h4>
+                  <p>{{notes}}</p>
+                </div>
+                {{/if}}
+
+                <div class="action">
+                  <h4>⚠️ Deal Negotiation Required</h4>
+                  <p>This milestone must be renegotiated before the deal can proceed. The deal is currently on hold.</p>
+                </div>
+
+                <div class="next-steps">
+                  <h3>🔄 Next Steps</h3>
+                  <ul>
+                    <li>Contact {{partyName}} to understand their concerns</li>
+                    <li>Discuss alternative terms that work for all parties</li>
+                    <li>Propose a new milestone amendment if needed</li>
+                    <li>Consider deal cancellation if agreement cannot be reached</li>
+                  </ul>
+                </div>
+
+                <div class="cta">
+                  <a href="{{dealLink}}" class="btn">View Deal & Negotiate</a>
+                </div>
+
+                <p class="msg" style="font-size:13px;color:#6b7280;margin-top:24px">
+                  Need mediation support? Email <a href="mailto:support@dealguard.org" style="color:#667eea">support@dealguard.org</a>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="footer">
+                <p class="name">DealGuard</p>
+                <p>Secure Transaction Platform</p>
+                <p class="legal">
+                  &copy; 2026 DealGuard. All rights reserved.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>

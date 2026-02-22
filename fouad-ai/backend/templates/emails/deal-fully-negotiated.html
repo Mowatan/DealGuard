@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deal Activated - DealGuard</title>
+  <style>
+    body{margin:0;padding:0;font-family:Arial,sans-serif;font-size:16px;line-height:1.5;color:#1f2937;background:#f3f4f6}
+    .wrap{width:100%;background:#f3f4f6;padding:20px}
+    .container{max-width:600px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,0.1)}
+    .header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px;text-align:center}
+    .header h1{margin:0;font-size:28px;font-weight:700;color:#fff}
+    .header p{margin:4px 0 0;font-size:13px;color:#e0e7ff}
+    .content{padding:30px}
+    .greeting{margin:0 0 20px;font-size:17px;color:#374151;font-weight:500}
+    .hero{background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);border:3px solid #f59e0b;border-radius:12px;padding:32px;margin:24px 0;text-align:center}
+    .hero .emoji{font-size:64px;margin-bottom:16px;animation:bounce 2s infinite}
+    .hero h2{margin:0 0 12px;font-size:26px;font-weight:700;color:#92400e}
+    .hero p{margin:0;font-size:16px;color:#78350f;font-weight:500}
+    @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+    .badge{background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:#fff;padding:12px 20px;border-radius:8px;text-align:center;margin:0 0 24px}
+    .badge .status{display:inline-block;background:#fff;color:#059669;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;text-transform:uppercase;margin-top:8px}
+    .msg{margin:0 0 20px;color:#4b5563;font-size:15px}
+    .msg strong{color:#1f2937;font-weight:600}
+    .details{background:#f9fafb;border:2px solid #e5e7eb;border-radius:8px;padding:20px;margin:24px 0}
+    .details h3{margin:0 0 16px;font-size:14px;font-weight:600;color:#6b7280;text-transform:uppercase}
+    .row{display:flex;padding:10px 0;border-bottom:1px solid #e5e7eb}
+    .row:last-child{border-bottom:none}
+    .label{flex:0 0 40%;font-weight:600;color:#374151;font-size:14px}
+    .value{flex:1;color:#6b7280;font-size:14px}
+    .value strong{color:#1f2937;font-weight:700}
+    .active-badge{display:inline-block;background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:#fff;padding:6px 14px;border-radius:12px;font-size:12px;font-weight:600;text-transform:uppercase}
+    .milestones{background:linear-gradient(135deg,#ecfdf5 0%,#d1fae5 100%);border:2px solid #10b981;border-radius:8px;padding:24px;margin:24px 0}
+    .milestones h3{margin:0 0 16px;font-size:16px;font-weight:700;color:#065f46;text-align:center}
+    .milestones .count{font-size:48px;font-weight:700;color:#059669;text-align:center;margin:12px 0}
+    .milestones p{margin:0;font-size:14px;color:#047857;text-align:center}
+    .next-steps{background:#fffbeb;border:2px solid #f59e0b;border-radius:8px;padding:20px;margin:24px 0}
+    .next-steps h3{margin:0 0 12px;font-size:14px;font-weight:600;color:#92400e;text-transform:uppercase}
+    .next-steps ul{margin:0;padding:0 0 0 20px;color:#78350f}
+    .next-steps li{margin:8px 0;font-size:14px}
+    .next-steps li strong{color:#92400e}
+    .cta{text-align:center;margin:30px 0}
+    .btn{display:inline-block;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;text-decoration:none;padding:18px 50px;border-radius:8px;font-weight:700;font-size:17px;box-shadow:0 6px 16px rgba(102,126,234,0.5)}
+    .footer{background:#f9fafb;padding:24px;text-align:center;border-top:1px solid #e5e7eb}
+    .footer p{margin:0 0 6px;font-size:12px;color:#6b7280}
+    .footer .name{font-weight:600;color:#374151}
+    .footer .legal{font-size:10px;color:#9ca3af;margin-top:12px}
+    .footer a{color:#667eea;text-decoration:none}
+    @media(max-width:600px){
+      .wrap{padding:10px}
+      .content{padding:20px}
+      .header{padding:20px}
+      .hero{padding:24px}
+      .hero .emoji{font-size:48px}
+      .hero h2{font-size:22px}
+      .row{flex-direction:column}
+      .label{margin-bottom:4px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+      <tr>
+        <td align="center">
+          <table class="container" cellspacing="0" cellpadding="0" border="0" width="600">
+            <tr>
+              <td class="header">
+                <h1>DealGuard</h1>
+                <p>Secure Transaction Platform</p>
+              </td>
+            </tr>
+            <tr>
+              <td class="content">
+                <p class="greeting">Hello {{partyName}},</p>
+
+                <div class="hero">
+                  <div class="emoji">🎊</div>
+                  <h2>Deal Activated!</h2>
+                  <p>All negotiations complete - Your deal is now live</p>
+                </div>
+
+                <p class="msg">Congratulations! All parties have successfully agreed on all milestones for deal <strong>{{dealNumber}}</strong>. Your transaction is now officially active and ready to proceed.</p>
+
+                <div class="badge">
+                  <div>Deal Status</div>
+                  <div class="status">✓ ACTIVE</div>
+                </div>
+
+                <div class="details">
+                  <h3>Deal Information</h3>
+                  <div class="row">
+                    <div class="label">Deal Number</div>
+                    <div class="value"><strong>{{dealNumber}}</strong></div>
+                  </div>
+                  <div class="row">
+                    <div class="label">Deal Title</div>
+                    <div class="value"><strong>{{dealTitle}}</strong></div>
+                  </div>
+                  <div class="row">
+                    <div class="label">Status</div>
+                    <div class="value"><span class="active-badge">✓ ACTIVE</span></div>
+                  </div>
+                  <div class="row">
+                    <div class="label">Activation Date</div>
+                    <div class="value">{{activationDate}}</div>
+                  </div>
+                </div>
+
+                <div class="milestones">
+                  <h3>🎯 Agreed Milestones</h3>
+                  <div class="count">{{milestonesCount}}</div>
+                  <p>All {{milestonesCount}} milestones have been reviewed and accepted by all parties</p>
+                </div>
+
+                <div class="next-steps">
+                  <h3>🚀 What Happens Next</h3>
+                  <ul>
+                    <li><strong>Contract Execution:</strong> The contract is now legally binding and in effect</li>
+                    <li><strong>Milestone Tracking:</strong> Monitor progress and completion of each milestone</li>
+                    <li><strong>Evidence Submission:</strong> Parties can submit evidence as milestones are completed</li>
+                    <li><strong>Custody Services:</strong> If applicable, custody account is ready for funding</li>
+                    <li><strong>Compliance:</strong> All parties must adhere to agreed terms and deadlines</li>
+                  </ul>
+                </div>
+
+                <p class="msg" style="font-size:15px;font-weight:500;color:#374151;text-align:center">Your active deal is now protected by DealGuard's secure transaction platform.</p>
+
+                <div class="cta">
+                  <a href="{{dealLink}}" class="btn">Manage Active Deal</a>
+                </div>
+
+                <p class="msg" style="font-size:13px;color:#6b7280;margin-top:24px;text-align:center">
+                  Questions or need support? Contact <a href="mailto:support@dealguard.org" style="color:#667eea">support@dealguard.org</a>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="footer">
+                <p class="name">DealGuard</p>
+                <p>Secure Transaction Platform</p>
+                <p class="legal">
+                  This deal is now active and legally binding. All parties must comply with agreed terms.<br>
+                  &copy; 2026 DealGuard. All rights reserved.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>
