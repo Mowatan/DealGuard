@@ -520,18 +520,19 @@ export async function confirmPartyInvitation(token: string) {
       respondedAt: new Date(),
     },
     include: {
-      deal: {
-        include: {
-          parties: true,
-        },
-      },
+      deal: true,
     },
   });
 
-  // Check if all parties have accepted
-  const allPartiesAccepted = updatedParty.deal.parties.every(
-    (p) => p.invitationStatus === InvitationStatus.ACCEPTED
-  );
+  // Check if all parties have accepted (optimized - count pending instead of fetching all)
+  const pendingCount = await prisma.party.count({
+    where: {
+      dealId: updatedParty.dealId,
+      invitationStatus: { not: InvitationStatus.ACCEPTED }
+    }
+  });
+
+  const allPartiesAccepted = pendingCount === 0;
 
   // If all parties accepted, update deal status
   if (allPartiesAccepted) {
@@ -1486,11 +1487,7 @@ export async function acceptPartyInvitation(params: {
   const party = await prisma.party.findUnique({
     where: { id: partyId },
     include: {
-      deal: {
-        include: {
-          parties: true,
-        },
-      },
+      deal: true,
     },
   });
 
@@ -1511,11 +1508,15 @@ export async function acceptPartyInvitation(params: {
     },
   });
 
-  // Check if ALL parties have now accepted
-  const allParties = party.deal.parties;
-  const allAccepted = allParties.every(
-    (p) => p.id === partyId || p.invitationStatus === InvitationStatus.ACCEPTED
-  );
+  // Check if ALL parties have now accepted (optimized - count pending instead of fetching all)
+  const pendingCount = await prisma.party.count({
+    where: {
+      dealId: dealId,
+      invitationStatus: { not: InvitationStatus.ACCEPTED }
+    }
+  });
+
+  const allAccepted = pendingCount === 0;
 
   // If all parties accepted, update deal status to ACCEPTED
   if (allAccepted) {
@@ -1542,6 +1543,11 @@ export async function acceptPartyInvitation(params: {
 
     // Send "deal active" emails to all parties
     const baseUrl = getFrontendUrl();
+    const allParties = await prisma.party.findMany({
+      where: { dealId: dealId },
+      select: { id: true, name: true, contactEmail: true }
+    });
+
     for (const p of allParties) {
       await emailSendingQueue.add(
         'send-deal-active',

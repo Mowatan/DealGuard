@@ -150,12 +150,15 @@ export async function invitationsRoutes(server: FastifyInstance) {
           },
         });
 
-        // Check if all parties have accepted
-        const allParties = await prisma.party.findMany({
-          where: { dealId: party.dealId },
+        // Check if all parties have accepted (optimized - count pending instead of fetching all)
+        const pendingCount = await prisma.party.count({
+          where: {
+            dealId: party.dealId,
+            invitationStatus: { not: InvitationStatus.ACCEPTED }
+          }
         });
 
-        const allAccepted = allParties.every((p) => p.invitationStatus === InvitationStatus.ACCEPTED);
+        const allAccepted = pendingCount === 0;
 
         // If all parties accepted, update deal status to ACCEPTED
         if (allAccepted && party.deal.status === DealStatus.INVITED) {
