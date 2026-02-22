@@ -2,6 +2,7 @@
 
 import { SignUp } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function SignUpPage() {
   const searchParams = useSearchParams();
@@ -9,6 +10,20 @@ export default function SignUpPage() {
   const invitationToken = searchParams.get('invitationToken');
   const returnUrl = searchParams.get('returnUrl');
   const email = searchParams.get('email');
+
+  // Extract invitation info from localStorage (set by invitation page)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const pendingToken = localStorage.getItem('pendingInvitation');
+      const pendingAction = localStorage.getItem('pendingInvitationAction');
+
+      // Store in sessionStorage for Clerk metadata (will be picked up after signup)
+      if (pendingToken && pendingAction) {
+        sessionStorage.setItem('clerkMetadata_pendingInvitation', pendingToken);
+        sessionStorage.setItem('clerkMetadata_pendingInvitationAction', pendingAction);
+      }
+    }
+  }, []);
 
   // Build the redirect URL after sign-up (priority: redirect > returnUrl > default)
   const redirectUrl = redirect || (invitationToken && returnUrl ? returnUrl : '/deals');

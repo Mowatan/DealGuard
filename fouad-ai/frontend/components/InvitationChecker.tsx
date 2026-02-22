@@ -7,7 +7,10 @@ import { useRouter } from 'next/navigation';
 /**
  * InvitationChecker - Auto-processes pending invitations after signup/login
  *
- * This component checks localStorage for a pending invitation token.
+ * This component checks for pending invitation tokens across multiple storage layers:
+ * 1. sessionStorage (most reliable - survives cache clears, set during signup)
+ * 2. localStorage (fallback for backwards compatibility)
+ *
  * If found and user is authenticated, it automatically processes the invitation
  * (accept or decline) and redirects appropriately.
  */
@@ -22,14 +25,22 @@ export function InvitationChecker() {
     // Only proceed if user is authenticated
     if (!userId) return;
 
-    // Check for pending invitation in localStorage
-    const pendingToken = localStorage.getItem('pendingInvitation');
-    const pendingAction = localStorage.getItem('pendingInvitationAction');
+    // Check for pending invitation in sessionStorage first (more reliable), then localStorage
+    let pendingToken = sessionStorage.getItem('clerkMetadata_pendingInvitation');
+    let pendingAction = sessionStorage.getItem('clerkMetadata_pendingInvitationAction');
+
+    // Fallback to localStorage for backwards compatibility
+    if (!pendingToken) {
+      pendingToken = localStorage.getItem('pendingInvitation');
+      pendingAction = localStorage.getItem('pendingInvitationAction');
+    }
 
     if (pendingToken && pendingAction) {
       console.log(`📨 Found pending invitation, auto-${pendingAction}ing...`, pendingToken);
 
-      // Clear localStorage immediately to prevent re-processing
+      // Clear both storage layers immediately to prevent re-processing
+      sessionStorage.removeItem('clerkMetadata_pendingInvitation');
+      sessionStorage.removeItem('clerkMetadata_pendingInvitationAction');
       localStorage.removeItem('pendingInvitation');
       localStorage.removeItem('pendingInvitationAction');
 

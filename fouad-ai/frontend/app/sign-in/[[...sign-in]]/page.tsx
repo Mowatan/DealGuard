@@ -2,10 +2,25 @@
 
 import { SignIn } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function SignInPage() {
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect');
+
+  // Extract invitation info from localStorage (set by invitation page)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const pendingToken = localStorage.getItem('pendingInvitation');
+      const pendingAction = localStorage.getItem('pendingInvitationAction');
+
+      // Store in sessionStorage for consistency (will be picked up after signin)
+      if (pendingToken && pendingAction) {
+        sessionStorage.setItem('clerkMetadata_pendingInvitation', pendingToken);
+        sessionStorage.setItem('clerkMetadata_pendingInvitationAction', pendingAction);
+      }
+    }
+  }, []);
 
   // Build the redirect URL after sign-in
   const redirectUrl = redirect || '/deals';
