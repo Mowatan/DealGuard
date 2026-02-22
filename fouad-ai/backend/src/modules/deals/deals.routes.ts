@@ -3,7 +3,7 @@ import { z } from 'zod';
 import * as dealService from './deals.service';
 import { authenticate } from '../../middleware/auth';
 import { requireCaseOfficer } from '../../middleware/authorize';
-import { ServiceTier } from '@prisma/client';
+import { ServiceTier, DealStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 
 const createDealSchema = z.object({
@@ -117,9 +117,9 @@ export async function dealsRoutes(server: FastifyInstance) {
       preHandler: [authenticate],
     },
     async (request, reply) => {
-    const { status, page = '1', limit = '20' } = request.query as any;
+    const { status, page = '1', limit = '20' } = request.query as { status?: string; page?: string; limit?: string };
     const deals = await dealService.listDeals({
-      status: status && status !== 'undefined' ? status : undefined,
+      status: (status && status !== 'undefined' ? status : undefined) as DealStatus | undefined,
       page: parseInt(page),
       limit: parseInt(limit),
       userId: request.user!.id, // Filter by current user
@@ -152,9 +152,9 @@ export async function dealsRoutes(server: FastifyInstance) {
     },
     async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { status, actorId } = request.body as any;
-    
-    const deal = await dealService.updateDealStatus(id, status, actorId);
+    const { status, actorId } = request.body as { status: string; actorId?: string };
+
+    const deal = await dealService.updateDealStatus(id, status as DealStatus, actorId || request.user!.id);
     return deal;
   });
 
@@ -517,7 +517,7 @@ export async function dealsRoutes(server: FastifyInstance) {
       const { id } = request.params as { id: string };
 
       try {
-        const bodyData = request.body as any;
+        const bodyData = request.body as Record<string, unknown>;
         const body = respondToAmendmentSchema.parse({
           partyId: bodyData.partyId,
           responseType: 'APPROVE',
@@ -552,7 +552,7 @@ export async function dealsRoutes(server: FastifyInstance) {
       const { id } = request.params as { id: string };
 
       try {
-        const bodyData = request.body as any;
+        const bodyData = request.body as Record<string, unknown>;
         const body = respondToAmendmentSchema.parse({
           partyId: bodyData.partyId,
           responseType: 'DISPUTE',
@@ -587,7 +587,7 @@ export async function dealsRoutes(server: FastifyInstance) {
       const { id } = request.params as { id: string };
 
       try {
-        const bodyData = request.body as any;
+        const bodyData = request.body as Record<string, unknown>;
         const body = respondToDeletionSchema.parse({
           partyId: bodyData.partyId,
           responseType: 'APPROVE',
@@ -622,7 +622,7 @@ export async function dealsRoutes(server: FastifyInstance) {
       const { id } = request.params as { id: string };
 
       try {
-        const bodyData = request.body as any;
+        const bodyData = request.body as Record<string, unknown>;
         const body = respondToDeletionSchema.parse({
           partyId: bodyData.partyId,
           responseType: 'DISPUTE',
@@ -678,7 +678,7 @@ export async function dealsRoutes(server: FastifyInstance) {
       const { id } = request.params as { id: string };
 
       try {
-        const bodyData = request.body as any;
+        const bodyData = request.body as Record<string, unknown>;
         const resolutionSchema = z.object({
           resolutionType: z.enum(['APPROVE', 'REJECT', 'REQUEST_COMPROMISE']),
           notes: z.string().min(1),
