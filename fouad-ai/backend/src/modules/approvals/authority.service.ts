@@ -1,4 +1,4 @@
-import { PrismaClient, ApprovalType, UserRole } from '@prisma/client';
+import { PrismaClient, Prisma, ApprovalType, UserRole } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
 const prisma = new PrismaClient();
@@ -291,7 +291,7 @@ export class AuthorityService {
     await prisma.user.update({
       where: { id: delegation.delegatedTo },
       data: {
-        delegatedAuthority: null,
+        delegatedAuthority: Prisma.JsonNull,
         assignedBy: null,
         assignedAt: null,
       }

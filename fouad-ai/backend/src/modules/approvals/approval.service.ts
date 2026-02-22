@@ -1,13 +1,7 @@
 import { PrismaClient, ApprovalType, ApprovalStatus, UserRole } from '@prisma/client';
+import { emailSendingQueue } from '../../lib/queue';
 
 const prisma = new PrismaClient();
-
-// Placeholder email queue - replace with actual implementation
-const emailQueue = {
-  addEmail: async (data: any) => {
-    console.log('Email queued:', data);
-  }
-};
 
 export class ApprovalService {
   async createApprovalRequest(data: {
@@ -80,6 +74,25 @@ export class ApprovalService {
     notes: string
   ) {
     await this.verifyRole(seniorId, [UserRole.SENIOR_ESCROW_OFFICER, UserRole.SUPER_ADMIN]);
+
+    // Get request with deal to check $1M limit
+    const existingRequest = await prisma.approvalRequest.findUnique({
+      where: { id: requestId },
+      include: { deal: true }
+    });
+
+    if (!existingRequest) {
+      throw new Error('Approval request not found');
+    }
+
+    // Check $1M limit for Senior Escrow Officers (Level 2)
+    const user = await prisma.user.findUnique({ where: { id: seniorId } });
+    if (user?.role === UserRole.SENIOR_ESCROW_OFFICER && decision === 'APPROVE') {
+      const dealAmount = existingRequest.deal.totalAmount?.toNumber() || 0;
+      if (dealAmount > 1000000) {
+        throw new Error('Deal amount exceeds senior officer authority ($1M limit). Requires super admin approval.');
+      }
+    }
 
     const newStatus = decision === 'APPROVE'
       ? ApprovalStatus.SENIOR_APPROVED
@@ -288,11 +301,11 @@ export class ApprovalService {
     });
 
     if (senior) {
-      await emailQueue.addEmail({
+      await emailSendingQueue.add('send-email', {
         to: senior.email,
         subject: `Approval Escalated: ${request.deal.title}`,
         template: 'approval-escalated-to-senior',
-        data: {
+        variables: {
           seniorName: senior.name,
           dealTitle: request.deal.title,
           approvalType: request.type,
@@ -393,11 +406,11 @@ export class ApprovalService {
     });
 
     for (const officer of officers) {
-      await emailQueue.addEmail({
+      await emailSendingQueue.add('send-email', {
         to: officer.email,
         subject: `New Approval Request: ${request.deal.title}`,
         template: 'approval-officer-assigned',
-        data: {
+        variables: {
           officerName: officer.name,
           dealTitle: request.deal.title,
           approvalType: request.type,
@@ -412,11 +425,11 @@ export class ApprovalService {
   private async notifyDecision(request: any): Promise<void> {
     const decisionMaker = request.seniorOfficer;
 
-    await emailQueue.addEmail({
+    await emailSendingQueue.add('send-email', {
       to: request.requestedByUser.email,
       subject: `Approval ${request.finalDecision}: ${request.deal.title}`,
       template: 'approval-decision-made',
-      data: {
+      variables: {
         userName: request.requestedByUser.name,
         dealTitle: request.deal.title,
         approvalType: request.type,
@@ -431,11 +444,11 @@ export class ApprovalService {
   private async notifyOverride(request: any): Promise<void> {
     const admin = request.adminOverrideUser;
 
-    await emailQueue.addEmail({
+    await emailSendingQueue.add('send-email', {
       to: request.requestedByUser.email,
       subject: `Admin Override: ${request.deal.title}`,
       template: 'approval-admin-override',
-      data: {
+      variables: {
         userName: request.requestedByUser.name,
         dealTitle: request.deal.title,
         approvalType: request.type,
@@ -447,11 +460,11 @@ export class ApprovalService {
     });
 
     if (request.officer) {
-      await emailQueue.addEmail({
+      await emailSendingQueue.add('send-email', {
         to: request.officer.email,
         subject: `Admin Override: ${request.deal.title}`,
         template: 'approval-admin-override',
-        data: {
+        variables: {
           userName: request.officer.name,
           dealTitle: request.deal.title,
           approvalType: request.type,

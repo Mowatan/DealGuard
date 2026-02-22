@@ -14,9 +14,9 @@ datasource db {
 
 enum UserRole {
   USER                    // Regular user (party in deals)
-  ESCROW_OFFICER         // Level 1: Can review, suggest, recommend
-  SENIOR_ESCROW_OFFICER  // Level 2: Can approve/reject officer recommendations
-  SUPER_ADMIN            // Level 3: Override everything, manage authority
+  ESCROW_OFFICER         // Level 1: Reviews and recommends
+  SENIOR_ESCROW_OFFICER  // Level 2: Approves up to $1M
+  SUPER_ADMIN            // Level 3: Unlimited authority
   ADMIN                  // Legacy admin role
   CASE_OFFICER           // Legacy case officer role
   PARTY_USER             // Legacy party user role
