@@ -3,6 +3,7 @@
 import { SignUp } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
+import { copyToSessionStorage } from '@/lib/invitation-storage';
 
 export default function SignUpPage() {
   const searchParams = useSearchParams();
@@ -11,18 +12,9 @@ export default function SignUpPage() {
   const returnUrl = searchParams.get('returnUrl');
   const email = searchParams.get('email');
 
-  // Extract invitation info from localStorage (set by invitation page)
+  // Copy invitation from localStorage to sessionStorage for better reliability
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const pendingToken = localStorage.getItem('pendingInvitation');
-      const pendingAction = localStorage.getItem('pendingInvitationAction');
-
-      // Store in sessionStorage for Clerk metadata (will be picked up after signup)
-      if (pendingToken && pendingAction) {
-        sessionStorage.setItem('clerkMetadata_pendingInvitation', pendingToken);
-        sessionStorage.setItem('clerkMetadata_pendingInvitationAction', pendingAction);
-      }
-    }
+    copyToSessionStorage();
   }, []);
 
   // Build the redirect URL after sign-up (priority: redirect > returnUrl > default)

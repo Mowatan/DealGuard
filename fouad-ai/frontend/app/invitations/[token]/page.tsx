@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { AlertCircle, CheckCircle2, Clock, Users, Mail, XCircle } from 'lucide-react';
+import { storeInvitation, clearInvitation } from '@/lib/invitation-storage';
 
 interface InvitationData {
   party: {
@@ -76,11 +77,8 @@ export default function InvitationAcceptancePage() {
 
   const handleAccept = async () => {
     if (!isSignedIn) {
-      // Store invitation token in localStorage for auto-accept after signup/login
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('pendingInvitation', token);
-        localStorage.setItem('pendingInvitationAction', 'accept');
-      }
+      // Store invitation token for auto-accept after signup/login
+      storeInvitation(token, 'accept');
       // Redirect to sign-up with return URL
       router.push(`/sign-up?redirect=${encodeURIComponent(`/invitations/${token}`)}`);
       return;
@@ -114,11 +112,8 @@ export default function InvitationAcceptancePage() {
         setSuccessMessage('Invitation accepted successfully!');
       }
 
-      // Clear any pending invitation from localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('pendingInvitation');
-        localStorage.removeItem('pendingInvitationAction');
-      }
+      // Clear pending invitation
+      clearInvitation();
 
       // Refresh invitation data
       await fetchInvitation();
@@ -140,11 +135,8 @@ export default function InvitationAcceptancePage() {
     }
 
     if (!isSignedIn) {
-      // Store invitation token in localStorage for processing after signup/login
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('pendingInvitation', token);
-        localStorage.setItem('pendingInvitationAction', 'decline');
-      }
+      // Store invitation token for processing after signup/login
+      storeInvitation(token, 'decline');
       // Redirect to sign-in (declining is a more negative action, so prefer sign-in over sign-up)
       router.push(`/sign-in?redirect=${encodeURIComponent(`/invitations/${token}`)}`);
       return;
@@ -175,11 +167,8 @@ export default function InvitationAcceptancePage() {
 
       setSuccessMessage('Invitation declined. The deal creator has been notified.');
 
-      // Clear any pending invitation from localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('pendingInvitation');
-        localStorage.removeItem('pendingInvitationAction');
-      }
+      // Clear pending invitation
+      clearInvitation();
 
       // Redirect to home after a short delay
       setTimeout(() => {

@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
+import { getPendingInvitation, clearInvitation } from '@/lib/invitation-storage';
 
 /**
  * InvitationChecker - Auto-processes pending invitations after signup/login
@@ -25,59 +26,49 @@ export function InvitationChecker() {
     // Only proceed if user is authenticated
     if (!userId) return;
 
-    // Check for pending invitation in sessionStorage first (more reliable), then localStorage
-    let pendingToken = sessionStorage.getItem('clerkMetadata_pendingInvitation');
-    let pendingAction = sessionStorage.getItem('clerkMetadata_pendingInvitationAction');
+    // Check for pending invitation
+    const pending = getPendingInvitation();
 
-    // Fallback to localStorage for backwards compatibility
-    if (!pendingToken) {
-      pendingToken = localStorage.getItem('pendingInvitation');
-      pendingAction = localStorage.getItem('pendingInvitationAction');
-    }
+    if (pending) {
+      console.log(`📨 Found pending invitation, auto-${pending.action}ing...`, pending.token);
 
-    if (pendingToken && pendingAction) {
-      console.log(`📨 Found pending invitation, auto-${pendingAction}ing...`, pendingToken);
-
-      // Clear both storage layers immediately to prevent re-processing
-      sessionStorage.removeItem('clerkMetadata_pendingInvitation');
-      sessionStorage.removeItem('clerkMetadata_pendingInvitationAction');
-      localStorage.removeItem('pendingInvitation');
-      localStorage.removeItem('pendingInvitationAction');
+      // Clear storage immediately to prevent re-processing
+      clearInvitation();
 
       // Determine endpoint based on action
-      const endpoint = pendingAction === 'accept' ? 'accept' : 'decline';
+      const endpoint = pending.action === 'accept' ? 'accept' : 'decline';
 
       // Auto-process the invitation
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/invitations/${pendingToken}/${endpoint}`, {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/invitations/${pending.token}/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include', // Include cookies for authentication
         body: JSON.stringify(
-          pendingAction === 'decline' ? { reason: 'Declined by user' } : {}
+          pending.action === 'decline' ? { reason: 'Declined by user' } : {}
         ),
       })
         .then((res) => {
           if (!res.ok) {
-            throw new Error(`Failed to ${pendingAction} invitation`);
+            throw new Error(`Failed to ${pending.action} invitation`);
           }
           return res.json();
         })
         .then((data) => {
-          console.log(`✅ Invitation ${pendingAction}ed successfully:`, data);
-          if (pendingAction === 'accept' && data.dealId) {
+          console.log(`✅ Invitation ${pending.action}ed successfully:`, data);
+          if (pending.action === 'accept' && data.dealId) {
             // Redirect to deal page with success message
             router.push(`/deals/${data.dealId}?message=invitation-accepted`);
-          } else if (pendingAction === 'decline') {
+          } else if (pending.action === 'decline') {
             // Redirect to home with decline message
             router.push('/?message=invitation-declined');
           }
         })
         .catch((err) => {
-          console.error(`❌ Failed to auto-${pendingAction} invitation:`, err);
+          console.error(`❌ Failed to auto-${pending.action} invitation:`, err);
           // On error, redirect back to invitation page so user can manually retry
-          router.push(`/invitations/${pendingToken}`);
+          router.push(`/invitations/${pending.token}`);
         });
     }
   }, [userId, isLoaded, router]);
