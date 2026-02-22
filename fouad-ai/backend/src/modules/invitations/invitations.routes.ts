@@ -164,27 +164,64 @@ export async function invitationsRoutes(server: FastifyInstance) {
 
         const allAccepted = pendingCount === 0;
 
-        // If all parties accepted, update deal status to ACCEPTED
+        // If all parties accepted, check for milestones and update deal status
         if (allAccepted && party.deal.status === DealStatus.INVITED) {
-          await prisma.deal.update({
-            where: { id: party.dealId },
-            data: { status: DealStatus.ACCEPTED },
+          // Check if deal has milestones
+          const contract = await prisma.contract.findFirst({
+            where: { dealId: party.dealId, isEffective: true },
+            include: { milestones: true }
           });
 
-          // Create audit log for deal activation
-          await createAuditLog({
-            dealId: party.dealId,
-            eventType: 'DEAL_ACTIVATED',
-            actor: 'SYSTEM',
-            entityType: 'Deal',
-            entityId: party.dealId,
-            newState: { status: DealStatus.ACCEPTED },
-            metadata: {
-              reason: 'All parties accepted invitations',
-            },
-          });
+          if (contract && contract.milestones.length > 0) {
+            // Has milestones → transition to PENDING_NEGOTIATION
+            await prisma.deal.update({
+              where: { id: party.dealId },
+              data: { status: DealStatus.PENDING_NEGOTIATION },
+            });
 
-          console.log(`✅ Deal ${party.deal.dealNumber} activated - all parties accepted`);
+            // Initialize all milestones to PENDING_RESPONSES status
+            await prisma.milestone.updateMany({
+              where: { contractId: contract.id },
+              data: { status: 'PENDING_RESPONSES' as any },
+            });
+
+            // Create audit log for milestone negotiation phase
+            await createAuditLog({
+              dealId: party.dealId,
+              eventType: 'MILESTONE_NEGOTIATION_STARTED',
+              actor: 'SYSTEM',
+              entityType: 'Deal',
+              entityId: party.dealId,
+              newState: { status: DealStatus.PENDING_NEGOTIATION },
+              metadata: {
+                reason: 'All parties accepted invitations - milestone negotiation begins',
+                milestonesCount: contract.milestones.length,
+              },
+            });
+
+            console.log(`✅ Deal ${party.deal.dealNumber} - all parties accepted. Now negotiating ${contract.milestones.length} milestones...`);
+          } else {
+            // No milestones → direct to ACCEPTED (old flow)
+            await prisma.deal.update({
+              where: { id: party.dealId },
+              data: { status: DealStatus.ACCEPTED },
+            });
+
+            // Create audit log for deal activation
+            await createAuditLog({
+              dealId: party.dealId,
+              eventType: 'DEAL_ACTIVATED',
+              actor: 'SYSTEM',
+              entityType: 'Deal',
+              entityId: party.dealId,
+              newState: { status: DealStatus.ACCEPTED },
+              metadata: {
+                reason: 'All parties accepted invitations - no milestones to negotiate',
+              },
+            });
+
+            console.log(`✅ Deal ${party.deal.dealNumber} activated - all parties accepted (no milestones)`);
+          }
         }
 
         return {

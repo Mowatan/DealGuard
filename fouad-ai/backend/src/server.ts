@@ -15,6 +15,7 @@ import { custodyRoutes } from './modules/custody/custody.routes';
 import { webhookRoutes } from './modules/webhooks/webhook.routes';
 import { usersRoutes } from './modules/users/users.routes';
 import milestonesRoutes from './modules/milestones/milestones.routes';
+import { milestoneNegotiationRoutes } from './modules/milestone-negotiation/milestone-negotiation.routes';
 import kycRoutes from './modules/kyc/kyc.routes';
 import disputesRoutes from './modules/disputes/disputes.routes';
 import { custodyDocumentsRoutes } from './modules/custody-documents/custody-documents.routes';
@@ -217,6 +218,7 @@ async function start() {
     // await server.register(blockchainRoutes, { prefix: '/api/blockchain' }); // DISABLED
     await server.register(webhookRoutes, { prefix: '/webhooks' });
     await server.register(milestonesRoutes);
+    await server.register(milestoneNegotiationRoutes); // Milestone negotiation system
     await server.register(kycRoutes);
     await server.register(disputesRoutes);
     await server.register(progressRoutes, { prefix: '/api' });

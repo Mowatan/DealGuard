@@ -85,6 +85,13 @@ enum DealStatus {
   CANCELLED
 }
 
+enum MilestoneResponseType {
+  ACCEPTED
+  REJECTED
+  AMENDMENT_PROPOSED
+  PENDING
+}
+
 enum AssetType {
   SHARES
   REAL_ESTATE
@@ -254,6 +261,9 @@ model Party {
   amendmentResponses PartyAmendmentResponse[] @relation("AmendmentResponses")
   deletionResponses  PartyDeletionResponse[]  @relation("DeletionResponses")
 
+  // Milestone negotiation responses
+  milestoneResponses MilestonePartyResponse[] @relation("MilestoneResponses")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -336,10 +346,12 @@ model ContractAcceptance {
 // Phase 1: Simplified statuses
 enum MilestoneStatus {
   PENDING
+  PENDING_RESPONSES      // Waiting for party responses
+  AMENDMENT_PENDING      // Amendment proposed, awaiting votes
   IN_PROGRESS
   READY_FOR_REVIEW
-  APPROVED
-  REJECTED
+  APPROVED               // All parties accepted
+  REJECTED               // Any party rejected
   COMPLETED
   DISPUTED
 }
@@ -441,6 +453,7 @@ model Milestone {
   evidenceItems       EvidenceItem[]
   approvalRequirement MilestoneApprovalRequirement?
   approvals           MilestoneApproval[]
+  partyResponses      MilestonePartyResponse[] @relation("MilestoneResponses")
 
   completedAt DateTime?
 
@@ -453,6 +466,34 @@ model Milestone {
   @@index([payerPartyId])
   @@index([receiverPartyId])
   @@index([delivererPartyId])
+}
+
+// ============================================================================
+// MILESTONE PARTY RESPONSES (Negotiation System)
+// ============================================================================
+
+model MilestonePartyResponse {
+  id          String @id @default(cuid())
+  milestoneId String
+  milestone   Milestone @relation("MilestoneResponses", fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  partyId String
+  party   Party  @relation("MilestoneResponses", fields: [partyId], references: [id], onDelete: Cascade)
+
+  responseType MilestoneResponseType @default(PENDING)
+
+  // Amendment proposal (JSON storage following PartyAmendmentResponse pattern)
+  amendmentProposal Json? // { newAmount: 5000, newDeadline: "2026-03-01", newDescription: "...", reason: "..." }
+
+  notes String? // Optional explanation
+
+  respondedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([milestoneId, partyId]) // Each party can only have one response per milestone
+  @@index([milestoneId])
+  @@index([partyId])
+  @@index([responseType])
 }
 
 model Obligation {
