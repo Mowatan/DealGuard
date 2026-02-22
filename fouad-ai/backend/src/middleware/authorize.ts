@@ -90,3 +90,173 @@ export const requireAuth = async (
     });
   }
 };
+
+// ============================================================================
+// RESOURCE-BASED AUTHORIZATION (Checks access to specific deals, milestones, etc.)
+// ============================================================================
+
+import {
+  canUserAccessDeal,
+  canUserAccessMilestone,
+  canUserAccessContract,
+  canUserAccessEvidence,
+  canUserAccessCustodyRecord,
+  isUserPartyMember,
+} from '../lib/authorization';
+
+/**
+ * Authorize access to a deal
+ * User must be: creator, party member, or admin
+ */
+export async function authorizeDeal(
+  request: FastifyRequest,
+  reply: FastifyReply
+): Promise<void> {
+  const userId = request.user!.id;
+  const params = request.params as { dealId?: string; id?: string };
+  const dealId = params.dealId || params.id;
+
+  if (!dealId) {
+    return reply.code(400).send({ error: 'Missing deal ID' });
+  }
+
+  const hasAccess = await canUserAccessDeal(dealId, userId);
+
+  if (!hasAccess) {
+    return reply.code(403).send({
+      error: 'Access denied',
+      message: 'You do not have permission to access this deal',
+    });
+  }
+}
+
+/**
+ * Authorize access to a milestone
+ * User must have access to the milestone's deal
+ */
+export async function authorizeMilestone(
+  request: FastifyRequest,
+  reply: FastifyReply
+): Promise<void> {
+  const userId = request.user!.id;
+  const params = request.params as { milestoneId?: string; id?: string };
+  const milestoneId = params.milestoneId || params.id;
+
+  if (!milestoneId) {
+    return reply.code(400).send({ error: 'Missing milestone ID' });
+  }
+
+  const hasAccess = await canUserAccessMilestone(milestoneId, userId);
+
+  if (!hasAccess) {
+    return reply.code(403).send({
+      error: 'Access denied',
+      message: 'You do not have permission to access this milestone',
+    });
+  }
+}
+
+/**
+ * Authorize access to a contract
+ * User must have access to the contract's deal
+ */
+export async function authorizeContract(
+  request: FastifyRequest,
+  reply: FastifyReply
+): Promise<void> {
+  const userId = request.user!.id;
+  const params = request.params as { contractId?: string; id?: string };
+  const contractId = params.contractId || params.id;
+
+  if (!contractId) {
+    return reply.code(400).send({ error: 'Missing contract ID' });
+  }
+
+  const hasAccess = await canUserAccessContract(contractId, userId);
+
+  if (!hasAccess) {
+    return reply.code(403).send({
+      error: 'Access denied',
+      message: 'You do not have permission to access this contract',
+    });
+  }
+}
+
+/**
+ * Authorize access to evidence
+ * User must have access to the evidence's deal
+ */
+export async function authorizeEvidence(
+  request: FastifyRequest,
+  reply: FastifyReply
+): Promise<void> {
+  const userId = request.user!.id;
+  const params = request.params as { evidenceId?: string; id?: string };
+  const evidenceId = params.evidenceId || params.id;
+
+  if (!evidenceId) {
+    return reply.code(400).send({ error: 'Missing evidence ID' });
+  }
+
+  const hasAccess = await canUserAccessEvidence(evidenceId, userId);
+
+  if (!hasAccess) {
+    return reply.code(403).send({
+      error: 'Access denied',
+      message: 'You do not have permission to access this evidence',
+    });
+  }
+}
+
+/**
+ * Authorize access to custody record
+ * User must have access to the custody record's deal
+ */
+export async function authorizeCustody(
+  request: FastifyRequest,
+  reply: FastifyReply
+): Promise<void> {
+  const userId = request.user!.id;
+  const params = request.params as { recordId?: string; id?: string };
+  const recordId = params.recordId || params.id;
+
+  if (!recordId) {
+    return reply.code(400).send({ error: 'Missing custody record ID' });
+  }
+
+  const hasAccess = await canUserAccessCustodyRecord(recordId, userId);
+
+  if (!hasAccess) {
+    return reply.code(403).send({
+      error: 'Access denied',
+      message: 'You do not have permission to access this custody record',
+    });
+  }
+}
+
+/**
+ * Authorize party membership
+ * User must be a member of the specified party
+ */
+export async function authorizePartyMembership(
+  request: FastifyRequest,
+  reply: FastifyReply
+): Promise<void> {
+  const userId = request.user!.id;
+  const body = request.body as { partyId?: string };
+  const params = request.params as { partyId?: string };
+  const partyId = body.partyId || params.partyId;
+
+  if (!partyId) {
+    return reply.code(400).send({ error: 'Missing party ID' });
+  }
+
+  const isMember = await isUserPartyMember(userId, partyId);
+
+  if (!isMember) {
+    return reply.code(403).send({
+      error: 'Access denied',
+      message: 'You are not a member of this party',
+    });
+  }
+}

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { authenticate } from '../../middleware/auth';
+import { authorizeMilestone, authorizeDeal } from '../../middleware/authorize';
 import {
   submitMilestoneResponse,
   getMilestoneResponses,
@@ -130,11 +131,11 @@ export async function milestoneNegotiationRoutes(server: FastifyInstance) {
     }
   );
 
-  // Authenticated - submit response to single milestone
+  // Authenticated + Authorized - submit response to single milestone
   server.post(
     '/api/milestones/:milestoneId/respond',
     {
-      preHandler: [authenticate],
+      preHandler: [authenticate, authorizeMilestone],
     },
     async (request, reply) => {
       const { milestoneId } = request.params as { milestoneId: string };
@@ -283,11 +284,11 @@ export async function milestoneNegotiationRoutes(server: FastifyInstance) {
     }
   );
 
-  // Authenticated - get all milestone responses for a deal
+  // Authenticated + Authorized - get all milestone responses for a deal
   server.get(
     '/api/deals/:dealId/milestone-responses',
     {
-      preHandler: [authenticate],
+      preHandler: [authenticate, authorizeDeal],
     },
     async (request, reply) => {
       const { dealId } = request.params as { dealId: string };
@@ -309,11 +310,11 @@ export async function milestoneNegotiationRoutes(server: FastifyInstance) {
     }
   );
 
-  // Authenticated - get responses for specific milestone
+  // Authenticated + Authorized - get responses for specific milestone
   server.get(
     '/api/milestones/:milestoneId/responses',
     {
-      preHandler: [authenticate],
+      preHandler: [authenticate, authorizeMilestone],
     },
     async (request, reply) => {
       const { milestoneId } = request.params as { milestoneId: string };
