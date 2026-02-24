@@ -35,12 +35,15 @@ describe('Milestone Negotiation Service', () => {
         updatedAt: new Date(),
       } as any);
 
-      // Mock milestone fetch
-      prismaMock.milestone.findUnique.mockResolvedValue({
+      // Mock milestone fetch (first call in submitMilestoneResponse)
+      prismaMock.milestone.findUnique.mockResolvedValueOnce({
         ...milestone,
         contract: {
           ...contract,
-          deal,
+          deal: {
+            ...deal,
+            parties: [party],
+          },
         },
       } as any);
 
@@ -57,6 +60,34 @@ describe('Milestone Negotiation Service', () => {
       };
 
       prismaMock.milestonePartyResponse.upsert.mockResolvedValue(mockResponse as any);
+
+      // Mock second milestone fetch (inside updateMilestoneStatus)
+      prismaMock.milestone.findUnique.mockResolvedValueOnce({
+        ...milestone,
+        contract: {
+          ...contract,
+          deal: {
+            ...deal,
+            parties: [party],
+          },
+        },
+        partyResponses: [mockResponse],
+      } as any);
+
+      // Mock milestone status update
+      prismaMock.milestone.update.mockResolvedValue({
+        ...milestone,
+        status: MilestoneStatus.PENDING_RESPONSES,
+      } as any);
+
+      // Mock deal fetch (for checkAndActivateDeal inside updateMilestoneStatus)
+      prismaMock.deal.findUnique.mockResolvedValue({
+        ...deal,
+        parties: [party],
+        contracts: [{ ...contract, milestones: [milestone] }],
+      } as any);
+
+      prismaMock.party.count.mockResolvedValue(0); // All parties accepted
 
       // Execute
       const result = await submitMilestoneResponse(
@@ -90,7 +121,9 @@ describe('Milestone Negotiation Service', () => {
 
       // Mock checks
       prismaMock.partyMember.findFirst.mockResolvedValue({ id: 'member-id' } as any);
-      prismaMock.milestone.findUnique.mockResolvedValue({
+
+      // First milestone fetch
+      prismaMock.milestone.findUnique.mockResolvedValueOnce({
         ...milestone,
         contract: {
           ...contract,
@@ -113,6 +146,27 @@ describe('Milestone Negotiation Service', () => {
       };
 
       prismaMock.milestonePartyResponse.upsert.mockResolvedValue(mockResponse as any);
+
+      // Second milestone fetch (updateMilestoneStatus)
+      prismaMock.milestone.findUnique.mockResolvedValueOnce({
+        ...milestone,
+        contract: {
+          ...contract,
+          deal: {
+            ...deal,
+            parties: [party],
+          },
+        },
+        partyResponses: [mockResponse],
+      } as any);
+
+      prismaMock.milestone.update.mockResolvedValue(milestone as any);
+      prismaMock.deal.findUnique.mockResolvedValue({
+        ...deal,
+        parties: [party],
+        contracts: [{ ...contract, milestones: [milestone] }],
+      } as any);
+      prismaMock.party.count.mockResolvedValue(0);
 
       // Execute
       const result = await submitMilestoneResponse(
@@ -166,7 +220,9 @@ describe('Milestone Negotiation Service', () => {
       };
 
       prismaMock.partyMember.findFirst.mockResolvedValue({ id: 'member-id' } as any);
-      prismaMock.milestone.findUnique.mockResolvedValue({
+
+      // First milestone fetch
+      prismaMock.milestone.findUnique.mockResolvedValueOnce({
         ...milestone,
         contract: {
           ...contract,
@@ -182,9 +238,31 @@ describe('Milestone Negotiation Service', () => {
         ...existingResponse,
         responseType: MilestoneResponseType.ACCEPTED,
         respondedAt: new Date(),
+        updatedAt: new Date(),
       };
 
       prismaMock.milestonePartyResponse.upsert.mockResolvedValue(updatedResponse as any);
+
+      // Second milestone fetch (updateMilestoneStatus)
+      prismaMock.milestone.findUnique.mockResolvedValueOnce({
+        ...milestone,
+        contract: {
+          ...contract,
+          deal: {
+            ...deal,
+            parties: [party],
+          },
+        },
+        partyResponses: [updatedResponse],
+      } as any);
+
+      prismaMock.milestone.update.mockResolvedValue(milestone as any);
+      prismaMock.deal.findUnique.mockResolvedValue({
+        ...deal,
+        parties: [party],
+        contracts: [{ ...contract, milestones: [milestone] }],
+      } as any);
+      prismaMock.party.count.mockResolvedValue(0);
 
       // Execute
       const result = await submitMilestoneResponse(
