@@ -32,6 +32,7 @@ export const mockEmailService = {
 // Mock Storage Service
 export const mockStorage = {
   uploadFile: jest.fn().mockResolvedValue({ url: 'https://example.com/file.pdf', key: 'mock-key' }),
+  uploadDocument: jest.fn().mockResolvedValue({ key: 'mock-document-key', hash: 'mock-hash-123' }),
   deleteFile: jest.fn().mockResolvedValue(true),
   getSignedUrl: jest.fn().mockResolvedValue('https://example.com/signed-url'),
 };
