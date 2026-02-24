@@ -4,7 +4,7 @@
  */
 
 import { checkAndActivateDeal, initializeMilestoneNegotiation } from '../deal-state-machine.service';
-import { prismaMock } from '../../../__tests__/setup';
+import { prismaMock } from '../../../__tests__/jest.setup';
 import { createMockDeal, createMockParty, createMockContract, createMockMilestone } from '../../../__tests__/helpers';
 import { DealStatus, InvitationStatus, MilestoneStatus } from '@prisma/client';
 
@@ -34,13 +34,16 @@ describe('Deal State Machine Service', () => {
 
       // Assertions
       expect(result.activated).toBe(true);
-      expect(result.newStatus).toBe(DealStatus.ACCEPTED);
+      expect(result.status).toBe(DealStatus.ACCEPTED);
       expect(result.reason).toContain('activated');
 
       // Verify database updates
       expect(prismaMock.deal.update).toHaveBeenCalledWith({
         where: { id: deal.id },
-        data: { status: DealStatus.ACCEPTED },
+        data: {
+          status: DealStatus.ACCEPTED,
+          allPartiesConfirmed: true,
+        },
       });
     });
 
@@ -62,7 +65,8 @@ describe('Deal State Machine Service', () => {
 
       // Assertions
       expect(result.activated).toBe(false);
-      expect(result.reason).toContain('not all parties have accepted');
+      expect(result.reason).toContain('Waiting for');
+      expect(result.reason).toContain('parties to accept');
       expect(prismaMock.deal.update).not.toHaveBeenCalled();
     });
 
@@ -95,8 +99,8 @@ describe('Deal State Machine Service', () => {
 
       // Assertions
       expect(result.activated).toBe(false);
-      expect(result.newStatus).toBe(DealStatus.PENDING_NEGOTIATION);
-      expect(result.reason).toContain('milestone negotiation');
+      expect(result.status).toBe(DealStatus.PENDING_NEGOTIATION);
+      expect(result.reason).toContain('milestones to be approved');
 
       // Verify transition to PENDING_NEGOTIATION
       expect(prismaMock.deal.update).toHaveBeenCalledWith({
@@ -134,7 +138,7 @@ describe('Deal State Machine Service', () => {
 
       // Assertions
       expect(result.activated).toBe(true);
-      expect(result.newStatus).toBe(DealStatus.ACCEPTED);
+      expect(result.status).toBe(DealStatus.ACCEPTED);
       expect(result.reason).toContain('activated');
     });
 
@@ -244,11 +248,11 @@ describe('Deal State Machine Service', () => {
       } as any);
 
       const result = await checkAndActivateDeal(deal1.id, 'user-id');
-      expect(result.newStatus).toBe(DealStatus.PENDING_NEGOTIATION);
+      expect(result.status).toBe(DealStatus.PENDING_NEGOTIATION);
     });
 
     it('should handle edge case: deal with no parties', async () => {
-      const deal = createMockDeal({ status: DealStatus.CREATED });
+      const deal = createMockDeal({ status: DealStatus.INVITED }); // Start from INVITED, not CREATED
 
       prismaMock.deal.findUnique.mockResolvedValue({
         ...deal,
