@@ -34,40 +34,26 @@ Created comprehensive mock layer for all external dependencies:
 
 ## 📊 Test Coverage Achieved
 
-### Test Suites: **2 created**
-### Total Tests: **16 written** (13 passing, 3 WIP)
+### Test Suites: **7 created**
+### Total Tests: **90 written** (89 passing, 1 skipped)
 
-### Suite 1: Deal State Machine (11/11 passing) ✅
-**File**: `src/modules/deals/__tests__/deal-state-machine.service.test.ts`
+### Suite 1: Deal State Machine (11 tests) ✅
+### Suite 2: Milestone Negotiation (5 tests) ✅
+### Suite 3: Authorization (25 tests) ✅
+### Suite 4: Invitation Edge Cases (13 tests) ✅
+### Suite 5: Party Repository (8 tests) ✅
+### Suite 6: Invitation Flows (11 tests) ✅
+### Suite 7: Contracts Service (16 tests, 1 skipped) 🟡
 
-**Tests**:
-1. ✅ Activate deal when all parties accepted (no milestones)
-2. ✅ Do NOT activate when parties haven't all accepted
-3. ✅ Transition to PENDING_NEGOTIATION with milestones
-4. ✅ Activate when all milestones approved
-5. ✅ Throw error if deal not found
-6. ✅ Handle mixed milestone statuses correctly
-7. ✅ Initialize milestones to PENDING_RESPONSES
-8. ✅ Do nothing if no contract exists
-9. ✅ Do nothing if no milestones exist
-10. ✅ Respect valid state transitions
-11. ✅ Handle edge case: deal with no parties
-
-**Coverage**: Core deal activation logic, state transitions, milestone negotiation flows
-
----
-
-### Suite 2: Milestone Negotiation (2/5 passing) 🟡
-**File**: `src/modules/milestone-negotiation/__tests__/milestone-negotiation.service.test.ts`
-
-**Tests**:
-1. 🟡 Submit ACCEPTED response (complex mock chain needed)
-2. 🟡 Submit AMENDMENT_PROPOSED with details (complex mock chain)
-3. ✅ Reject response if user not party member
-4. 🟡 Allow updating existing response (complex mock chain)
-5. ✅ Return milestone with responses and summary
-
-**Issue**: `submitMilestoneResponse` calls `updateMilestoneStatus` internally, requiring deep mock chains. **Solution**: Refactor service for better testability or enhance mocks.
+**Coverage**:
+- Deal activation & state transitions
+- Milestone response submission & consensus
+- Resource-based authorization (deals, contracts, milestones, evidence, custody)
+- Party membership validation
+- Invitation acceptance/decline flows
+- Token validation
+- Contract versioning & acceptance
+- Document upload (1 test skipped - storage mock issue)
 
 ---
 
@@ -194,11 +180,11 @@ All infrastructure services automatically mocked before tests run:
 
 | Metric | Target | Current | Status |
 |--------|--------|---------|--------|
-| Test Coverage | 70% | ~5% | 🔴 |
-| Service Tests | 100+ | 16 | 🟡 |
+| Test Coverage | 70% | ~15% | 🟡 |
+| Service Tests | 100+ | 89 | 🟢 |
 | API Tests | 80+ | 0 | 🔴 |
 | E2E Tests | 10+ | 0 | 🔴 |
-| Test Suites | 12+ | 2 | 🟡 |
+| Test Suites | 12+ | 7 | 🟡 |
 
 **Infrastructure**: ✅ **READY**
 **Foundation**: ✅ **SOLID**

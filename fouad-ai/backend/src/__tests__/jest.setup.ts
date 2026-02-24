@@ -30,6 +30,7 @@ jest.mock('../lib/queue', () => ({
   emailSendingQueue: mockQueue,
   blockchainAnchorQueue: mockQueue,
   evidenceProcessingQueue: mockQueue,
+  aiSuggestionQueue: mockQueue,
   redisConnection: mockRedis,
 }));
 
