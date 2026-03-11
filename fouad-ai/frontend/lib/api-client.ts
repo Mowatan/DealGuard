@@ -340,15 +340,8 @@ export const contractsApi = {
     fetchApi<any>(`/api/contracts/${id}/acceptance-status`, { token }),
 };
 
-// Blockchain API
-export const blockchainApi = {
-  listByDeal: (dealId: string, token?: string | null) =>
-    fetchApi<any>(`/api/blockchain/deal/${dealId}`, { token }),
-
-  getById: (id: string, token?: string | null) => fetchApi<any>(`/api/blockchain/${id}`, { token }),
-
-  verify: (id: string, token?: string | null) => fetchApi<any>(`/api/blockchain/${id}/verify`, { token }),
-};
+// Blockchain API - REMOVED (not in MVP, backend routes disabled)
+// If blockchain features are needed in future, re-enable backend routes first
 
 // Users API
 export const usersApi = {

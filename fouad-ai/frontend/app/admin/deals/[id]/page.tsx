@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
-import { dealsApi, evidenceApi, custodyApi, blockchainApi, contractsApi, ApiError } from '@/lib/api-client';
+import { dealsApi, evidenceApi, custodyApi, contractsApi, ApiError } from '@/lib/api-client';
 import Link from 'next/link';
 import { ArrowLeft, Users, FileText, Shield, Wallet, Link as LinkIcon, Plus, Upload, X } from 'lucide-react';
 
@@ -51,14 +51,14 @@ export default function AdminDealDetailPage() {
 
       // Fetch related data
       try {
-        const [evidenceData, custodyData, anchorsData] = await Promise.all([
+        const [evidenceData, custodyData] = await Promise.all([
           evidenceApi.listByDeal(dealId, undefined, token),
           custodyApi.listByDeal(dealId, token),
-          blockchainApi.listByDeal(dealId, token),
+          // Blockchain API removed - not in MVP (backend routes disabled)
         ]);
         setEvidence(evidenceData || []);
         setCustody(custodyData || []);
-        setAnchors(anchorsData || []);
+        setAnchors([]); // Blockchain anchors disabled for MVP
       } catch (err) {
         console.error('Failed to fetch related data:', err);
       }
