@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 
@@ -18,6 +19,7 @@ interface Stats {
 }
 
 export function ApprovalStats({ userRole }: ApprovalStatsProps) {
+  const { getToken } = useAuth();
   const [stats, setStats] = useState<Stats>({
     pending: 0,
     approvedToday: 0,
@@ -34,7 +36,7 @@ export function ApprovalStats({ userRole }: ApprovalStatsProps) {
     try {
       const response = await fetch('/api/approvals/stats', {
         headers: {
-          'Authorization': `Bearer ${await getAuthToken()}`,
+          'Authorization': `Bearer ${await getToken()}`,
         },
       });
 
@@ -47,12 +49,6 @@ export function ApprovalStats({ userRole }: ApprovalStatsProps) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getAuthToken = async () => {
-    // Get Clerk token
-    const { getToken } = await import('@clerk/nextjs');
-    return await getToken();
   };
 
   if (loading) {

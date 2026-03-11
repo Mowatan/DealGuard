@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@clerk/nextjs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,7 @@ interface ApprovalRequestListProps {
 
 export function ApprovalRequestList({ userRole, status }: ApprovalRequestListProps) {
   const router = useRouter();
+  const { getToken } = useAuth();
   const [requests, setRequests] = useState<ApprovalRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -69,7 +71,7 @@ export function ApprovalRequestList({ userRole, status }: ApprovalRequestListPro
 
       const response = await fetch(`/api/approvals?${params}`, {
         headers: {
-          'Authorization': `Bearer ${await getAuthToken()}`,
+          'Authorization': `Bearer ${await getToken()}`,
         },
       });
 
@@ -82,11 +84,6 @@ export function ApprovalRequestList({ userRole, status }: ApprovalRequestListPro
     } finally {
       setLoading(false);
     }
-  };
-
-  const getAuthToken = async () => {
-    const { getToken } = await import('@clerk/nextjs');
-    return await getToken();
   };
 
   const getStatusBadge = (status: ApprovalStatus) => {
