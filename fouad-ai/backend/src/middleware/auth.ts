@@ -287,6 +287,9 @@ export async function authenticate(
       // Send admin notification for new user signup
       const adminEmail = process.env.ADMIN_EMAIL || 'trust@dealguard.org';
       try {
+        const frontendUrl = process.env.FRONTEND_URL ||
+                          (process.env.NODE_ENV === 'production' ? 'https://dealguard.org' : 'http://localhost:3000');
+
         await emailSendingQueue.add('send-email', {
           to: adminEmail,
           subject: `New User Signup - ${user.email}`,
@@ -298,6 +301,7 @@ export async function authenticate(
             clerkId: user.clerkId || 'N/A',
             signupDate: new Date().toISOString(),
             signupTime: new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }),
+            frontendUrl, // Dynamic URL for environment-agnostic emails
           },
         });
       } catch (emailError) {

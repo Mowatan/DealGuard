@@ -289,6 +289,7 @@ export async function createDeal(params: CreateDealParams) {
         partiesCount: deal.parties.length,
         milestonesCount: params.milestones?.length || 0,
         createdAt: new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }),
+        frontendUrl: getFrontendUrl(), // Dynamic URL for environment-agnostic emails
       },
     });
   } catch (emailError) {
