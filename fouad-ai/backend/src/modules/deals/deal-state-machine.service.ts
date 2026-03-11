@@ -77,27 +77,26 @@ export async function checkAndActivateDeal(
   const contract = deal.contracts[0];
   if (contract && contract.milestones.length > 0) {
     const pendingMilestones = contract.milestones.filter(
-      m => m.status !== MilestoneStatus.APPROVED
+      m => m.status !== MilestoneStatus.APPROVED && m.status !== MilestoneStatus.COMPLETED
     );
 
     if (pendingMilestones.length > 0) {
-      // Deal should be in PENDING_NEGOTIATION if has milestones
-      if (deal.status !== DealStatus.PENDING_NEGOTIATION) {
-        await transitionDealStatus(
-          dealId,
-          deal.status,
-          DealStatus.PENDING_NEGOTIATION,
-          actor,
-          'All parties accepted - milestone negotiation begins'
-        );
-      }
+      // TODO: Remove auto-approval once milestone negotiation UI is built
+      // For MVP: All milestones are auto-approved on deal activation
+      // Future: Parties should accept/reject/amend individual milestones
 
-      return {
-        activated: false,
-        status: DealStatus.PENDING_NEGOTIATION,
-        reason: `Waiting for ${pendingMilestones.length} milestones to be approved`,
-        nextStep: 'All parties must agree on all milestones',
-      };
+      // Auto-approve all pending milestones for MVP
+      await prisma.milestone.updateMany({
+        where: {
+          id: { in: pendingMilestones.map(m => m.id) },
+          status: { in: [MilestoneStatus.PENDING, MilestoneStatus.PENDING_RESPONSES] }
+        },
+        data: {
+          status: MilestoneStatus.APPROVED
+        }
+      });
+
+      console.log(`✅ Auto-approved ${pendingMilestones.length} milestones for deal ${deal.dealNumber} (MVP mode - no negotiation UI)`);
     }
   }
 
