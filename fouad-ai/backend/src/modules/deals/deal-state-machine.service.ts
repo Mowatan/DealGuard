@@ -71,6 +71,9 @@ export async function checkAndActivateDeal(
   }
 
   // Check 2: If milestones exist, all must be approved
+  if (!deal.contracts || deal.contracts.length === 0) {
+    throw new Error('Cannot activate deal without contract');
+  }
   const contract = deal.contracts[0];
   if (contract && contract.milestones.length > 0) {
     const pendingMilestones = contract.milestones.filter(
@@ -221,7 +224,11 @@ async function sendDealActivationEmails(dealId: string): Promise<void> {
   if (!deal) return;
 
   const frontendUrl = process.env.FRONTEND_URL || 'https://dealguard.org';
-  const contract = deal.contracts[0];
+  const contract = deal.contracts?.[0];
+  if (!contract) {
+    console.warn(`Cannot send activation email: Deal ${deal.id} has no contract`);
+    return;
+  }
 
   for (const party of deal.parties) {
     await emailSendingQueue.add('send-deal-activated', {
@@ -259,7 +266,11 @@ async function sendMilestoneNegotiationStartedEmails(dealId: string): Promise<vo
   if (!deal) return;
 
   const frontendUrl = process.env.FRONTEND_URL || 'https://dealguard.org';
-  const contract = deal.contracts[0];
+  const contract = deal.contracts?.[0];
+  if (!contract) {
+    console.warn(`Cannot send milestone negotiation email: Deal ${deal.id} has no contract`);
+    return;
+  }
 
   for (const party of deal.parties) {
     await emailSendingQueue.add('send-milestone-negotiation-started', {

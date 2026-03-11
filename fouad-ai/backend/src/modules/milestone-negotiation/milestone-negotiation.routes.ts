@@ -103,6 +103,11 @@ export async function milestoneNegotiationRoutes(server: FastifyInstance) {
           });
         }
 
+        if (!deal.contracts || deal.contracts.length === 0) {
+          return reply.code(400).send({
+            error: 'Deal has no contract for milestone negotiation',
+          });
+        }
         const contract = deal.contracts[0];
 
         return {

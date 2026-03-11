@@ -33,12 +33,21 @@ async function generateEvidenceMappingSuggestion(evidenceId: string) {
     },
   });
 
-  if (!evidence || !evidence.deal.contracts.length) {
+  if (!evidence || !evidence.deal) {
+    console.log('Evidence has no associated deal');
+    return;
+  }
+
+  if (!evidence.deal.contracts || evidence.deal.contracts.length === 0) {
     console.log('No active contract found for evidence mapping');
     return;
   }
 
   const contract = evidence.deal.contracts[0];
+  if (!contract.milestones) {
+    console.log('Contract has no milestones for evidence mapping');
+    return;
+  }
   const milestones = contract.milestones;
 
   // Simulate AI analysis

@@ -412,9 +412,22 @@ export async function checkApprovalCompleteness(milestoneId: string): Promise<bo
     }
   }
 
+  // Validate milestone has required relations
+  if (!milestone.contract) {
+    throw new Error('Milestone has no contract');
+  }
+  if (!milestone.contract.deal) {
+    throw new Error('Milestone contract has no deal');
+  }
+  if (!milestone.contract.deal.parties) {
+    throw new Error('Deal has no parties');
+  }
+
+  const parties = milestone.contract.deal.parties;
+
   // Check buyer approval
   if (requirement.requireBuyerApproval) {
-    const buyerParty = milestone.contract.deal.parties.find((p) => p.role === 'BUYER');
+    const buyerParty = parties.find((p) => p.role === 'BUYER');
     if (buyerParty) {
       const hasBuyerApproval = milestone.approvals.some((a) => a.partyId === buyerParty.id);
       if (!hasBuyerApproval) {
@@ -425,7 +438,7 @@ export async function checkApprovalCompleteness(milestoneId: string): Promise<bo
 
   // Check seller approval
   if (requirement.requireSellerApproval) {
-    const sellerParty = milestone.contract.deal.parties.find((p) => p.role === 'SELLER');
+    const sellerParty = parties.find((p) => p.role === 'SELLER');
     if (sellerParty) {
       const hasSellerApproval = milestone.approvals.some((a) => a.partyId === sellerParty.id);
       if (!hasSellerApproval) {

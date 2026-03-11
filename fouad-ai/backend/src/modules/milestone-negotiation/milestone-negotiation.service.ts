@@ -288,10 +288,10 @@ export async function getDealMilestoneNegotiationStatus(dealId: string, userId: 
     throw new Error('Deal not found');
   }
 
-  const contract = deal.contracts[0];
-  if (!contract) {
-    throw new Error('No effective contract found');
+  if (!deal.contracts || deal.contracts.length === 0) {
+    throw new Error('Deal has no contract for milestone negotiation');
   }
+  const contract = deal.contracts[0];
 
   const totalParties = deal.parties.length;
 
@@ -461,9 +461,13 @@ async function sendMilestoneAcceptedNotifications(milestoneId: string): Promise<
   if (!milestone) return;
 
   const deal = milestone.contract.deal;
-  const contract = deal.contracts[0];
-  const approvedCount = contract?.milestones.filter(m => m.status === 'APPROVED').length || 0;
-  const totalMilestones = contract?.milestones.length || 0;
+  const contract = deal.contracts?.[0];
+  if (!contract) {
+    console.warn(`Cannot send all-accepted email: Deal ${deal.id} has no contract`);
+    return;
+  }
+  const approvedCount = contract.milestones.filter(m => m.status === 'APPROVED').length || 0;
+  const totalMilestones = contract.milestones.length || 0;
   const allMilestonesApproved = approvedCount === totalMilestones;
 
   // Send to all parties

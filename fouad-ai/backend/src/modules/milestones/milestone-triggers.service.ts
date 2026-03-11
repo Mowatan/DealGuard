@@ -408,11 +408,17 @@ export async function autoActivateMilestonesForDeal(dealId: string): Promise<voi
     },
   });
 
-  if (!deal || !deal.contracts[0]) {
+  if (!deal || !deal.contracts || deal.contracts.length === 0) {
+    console.warn(`Deal ${dealId} has no contract, skipping milestone triggers`);
     return;
   }
 
-  const pendingMilestones = deal.contracts[0].milestones;
+  const contract = deal.contracts[0];
+  if (!contract.milestones) {
+    console.warn(`Contract ${contract.id} has no milestones`);
+    return;
+  }
+  const pendingMilestones = contract.milestones;
 
   for (const milestone of pendingMilestones) {
     try {

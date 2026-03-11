@@ -88,6 +88,9 @@ export class ApprovalService {
     // Check $1M limit for Senior Escrow Officers (Level 2)
     const user = await prisma.user.findUnique({ where: { id: seniorId } });
     if (user?.role === UserRole.SENIOR_ESCROW_OFFICER && decision === 'APPROVE') {
+      if (!existingRequest.deal) {
+        throw new Error('Approval request has no associated deal');
+      }
       const dealAmount = existingRequest.deal.totalAmount?.toNumber() || 0;
       if (dealAmount > 1000000) {
         throw new Error('Deal amount exceeds senior officer authority ($1M limit). Requires super admin approval.');
@@ -460,9 +463,12 @@ export class ApprovalService {
     });
 
     if (request.officer) {
-      await emailSendingQueue.add('send-email', {
-        to: request.officer.email,
-        subject: `Admin Override: ${request.deal.title}`,
+      if (!request.officer.email) {
+        console.warn(`Officer ${request.officer.id} has no email, skipping notification`);
+      } else {
+        await emailSendingQueue.add('send-email', {
+          to: request.officer.email,
+          subject: `Admin Override: ${request.deal.title}`,
         template: 'approval-admin-override',
         variables: {
           userName: request.officer.name,
@@ -474,6 +480,7 @@ export class ApprovalService {
           requestId: request.id,
         }
       });
+      }
     }
   }
 }
