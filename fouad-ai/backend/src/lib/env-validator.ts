@@ -81,9 +81,19 @@ export function validateEnvironment(): EnvValidationResult {
     }
   }
 
-  // IMPORTANT: Frontend URL for email links
+  // CRITICAL: Frontend URL for email links (required in PRODUCTION only).
+  // Without it, getFrontendUrl() silently falls back to the legacy dealguard.org
+  // domain in real user emails. Fail loud at boot rather than fail quiet in prod.
+  // Development is unaffected (callers default to http://localhost:3000).
   if (isProduction && !process.env.FRONTEND_URL) {
-    warnings.push('FRONTEND_URL not set - email links may not work correctly');
+    errors.push('FRONTEND_URL is required in production');
+  }
+
+  // CRITICAL: Admin email (required in PRODUCTION only).
+  // Without it, admin notifications fall back to the legacy trust@dealguard.org
+  // address. Required in prod; optional/defaulted in development.
+  if (isProduction && !process.env.ADMIN_EMAIL) {
+    errors.push('ADMIN_EMAIL is required in production');
   }
 
   // Print validation results

@@ -175,6 +175,14 @@ mixed-consideration in (matches the founder's flagship $100M+ cash+RE exit).
   edits, post-MVP.
 - **Structurer transferability** — defaults to creator; assignable for broker-led
   M&A? Confirm.
+- **Redis-TLS (ELEVATED)** — PII (party emails/names) + money-adjacent data
+  (milestone amounts) flow through BullMQ on cleartext `redis://` today
+  (`lib/queue.ts`). Hard gate **before any beta with real personal data and
+  before Phase 3 real money**: switch the Railway Redis link to `rediss://`.
+- **npm audit: 9 vulns** (1 moderate, 6 high, 2 critical) in the frontend
+  eslint dev-toolchain (added Phase 0). Phase 6 hardening. Currently dev-only —
+  **re-check that claim** if any of those packages ever move to a build/runtime
+  path.
 
 ---
 
