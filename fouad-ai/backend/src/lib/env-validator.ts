@@ -62,21 +62,33 @@ export function validateEnvironment(): EnvValidationResult {
     warnings.push('EMAIL_FROM not set - using default sender');
   }
 
-  // CRITICAL: File Storage (S3/R2 for production)
+  // CRITICAL: Durable file storage (required in PRODUCTION only).
+  // Without S3/R2 (or MinIO) credentials, StorageService silently falls back to
+  // the local filesystem, which is EPHEMERAL on most hosts (e.g. Railway) — every
+  // redeploy wipes uploaded evidence/KYC/custody documents. Fail loud at boot
+  // rather than fail quiet in prod. Mirrors the provider selection in
+  // lib/storage.ts. Development is unaffected (local fallback is fine there).
   if (isProduction) {
-    if (!process.env.S3_ACCESS_KEY_ID || !process.env.S3_SECRET_ACCESS_KEY) {
-      warnings.push('S3 credentials not configured - file uploads may fail in production');
+    const hasS3 = !!(process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY);
+    const hasMinio = !!(process.env.MINIO_ENDPOINT && process.env.MINIO_ACCESS_KEY);
+
+    if (!hasS3 && !hasMinio) {
+      errors.push(
+        'Durable storage is required in production: configure S3/R2 ' +
+          '(S3_ACCESS_KEY_ID + S3_SECRET_ACCESS_KEY) or MinIO ' +
+          '(MINIO_ENDPOINT + MINIO_ACCESS_KEY). The local-filesystem fallback is ' +
+          'ephemeral and loses uploaded documents on redeploy.'
+      );
     }
 
-    if (!process.env.S3_ENDPOINT) {
-      warnings.push('S3_ENDPOINT not set - using AWS S3 defaults');
+    // Refinements once S3/R2 is configured (non-blocking).
+    if (hasS3 && !process.env.S3_ENDPOINT) {
+      warnings.push('S3_ENDPOINT not set - using AWS S3 defaults (required for Cloudflare R2)');
     }
-
-    if (!process.env.S3_BUCKET_EVIDENCE) {
+    if (hasS3 && !process.env.S3_BUCKET_EVIDENCE) {
       warnings.push('S3_BUCKET_EVIDENCE not set - using default bucket name');
     }
-
-    if (!process.env.S3_BUCKET_DOCUMENTS) {
+    if (hasS3 && !process.env.S3_BUCKET_DOCUMENTS) {
       warnings.push('S3_BUCKET_DOCUMENTS not set - using default bucket name');
     }
   }
