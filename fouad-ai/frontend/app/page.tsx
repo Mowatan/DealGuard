@@ -13,16 +13,16 @@ import ServiceTiersSection from "@/components/landing/ServiceTiersSection"
 export default function HomePage() {
   return (
     <div className="min-h-screen">
-      <div className="bg-card rounded-b-3xl shadow-sm">
-        <LandingHeader />
-      </div>
-      <HeroSection />
-      <TransactionTypesSection />
-      <ServiceTiersSection />
-      <HowItWorksSection />
-      <FeaturesSection />
-      <RoadmapSection />
-      <FAQSection />
+      <LandingHeader />
+      <main>
+        <HeroSection />
+        <HowItWorksSection />
+        <ServiceTiersSection />
+        <TransactionTypesSection />
+        <FeaturesSection />
+        <RoadmapSection />
+        <FAQSection />
+      </main>
       <Footer />
     </div>
   )
