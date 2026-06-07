@@ -124,6 +124,20 @@ export async function webhookRoutes(server: FastifyInstance) {
   });
 }
 
+// Bound attachment processing to prevent memory-exhaustion DoS. This JSON path
+// is NOT covered by the multipart plugin's 50MB limit, so it must self-limit.
+const MAX_ATTACHMENTS = 20;
+const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024; // 25MB per attachment
+const MAX_TOTAL_ATTACHMENT_BYTES = 50 * 1024 * 1024; // 50MB total
+
+// Approximate decoded size of a base64 string without allocating the buffer.
+function base64DecodedSize(b64: string): number {
+  const len = b64.length;
+  if (len === 0) return 0;
+  const padding = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0;
+  return Math.floor((len * 3) / 4) - padding;
+}
+
 function parseAttachments(body: any): Array<{
   filename: string;
   contentType: string;
@@ -136,14 +150,36 @@ function parseAttachments(body: any): Array<{
   if (body.attachments) {
     try {
       const parsed = JSON.parse(body.attachments);
+      let totalBytes = 0;
+
       for (const att of parsed) {
-        if (body[`attachment-${att.name}`]) {
-          attachments.push({
-            filename: att.name,
-            contentType: att.type,
-            content: Buffer.from(body[`attachment-${att.name}`], 'base64'),
-          });
+        if (attachments.length >= MAX_ATTACHMENTS) {
+          console.warn(`Inbound email exceeded ${MAX_ATTACHMENTS} attachments; ignoring the rest.`);
+          break;
         }
+
+        const raw = body[`attachment-${att.name}`];
+        if (!raw) {
+          continue;
+        }
+
+        // Check size from the base64 string before allocating the Buffer.
+        const size = base64DecodedSize(String(raw));
+        if (size > MAX_ATTACHMENT_BYTES) {
+          console.warn(`Skipping oversized attachment "${att.name}" (${size} bytes).`);
+          continue;
+        }
+        if (totalBytes + size > MAX_TOTAL_ATTACHMENT_BYTES) {
+          console.warn('Inbound email exceeded total attachment size budget; ignoring the rest.');
+          break;
+        }
+        totalBytes += size;
+
+        attachments.push({
+          filename: att.name,
+          contentType: att.type,
+          content: Buffer.from(raw, 'base64'),
+        });
       }
     } catch (e) {
       console.error('Error parsing attachments:', e);

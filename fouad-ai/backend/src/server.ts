@@ -186,9 +186,23 @@ async function start() {
         return reply.code(403).send({ error: 'Invalid bucket' });
       }
 
+      // Security: Reject keys that could traverse outside the bucket directory.
+      // Legitimate keys are flat (`{timestamp}-{hash8}-{filename}`); a key
+      // containing path separators or `..` (possibly via %2F-encoded slashes)
+      // must never be allowed to escape the storage root.
+      if (key.includes('..') || key.includes('/') || key.includes('\\') || key.includes('\0')) {
+        return reply.code(400).send({ error: 'Invalid file key' });
+      }
+
       // Get local storage path from environment
       const localStoragePath = process.env.STORAGE_LOCAL_PATH || '/app/uploads';
-      const filePath = path.join(localStoragePath, bucket, key);
+      const bucketDir = path.resolve(localStoragePath, bucket);
+      const filePath = path.resolve(bucketDir, key);
+
+      // Defense in depth: ensure the resolved path stays within the bucket dir.
+      if (filePath !== bucketDir && !filePath.startsWith(bucketDir + path.sep)) {
+        return reply.code(400).send({ error: 'Invalid file key' });
+      }
 
       try {
         // Check file exists and is readable
