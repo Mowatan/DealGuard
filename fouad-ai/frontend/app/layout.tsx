@@ -1,22 +1,27 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import {
-  ClerkProvider,
-  SignInButton,
-  SignUpButton,
-  SignedIn,
-  SignedOut,
-  UserButton,
-} from '@clerk/nextjs';
+import { Bricolage_Grotesque, Hanken_Grotesk } from 'next/font/google';
+import { ClerkProvider } from '@clerk/nextjs';
 import { Toaster } from '@/components/ui/toaster';
 import { InvitationChecker } from '@/components/InvitationChecker';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const fontDisplay = Bricolage_Grotesque({
+  subsets: ['latin'],
+  variable: '--font-display',
+  display: 'swap',
+  weight: ['400', '500', '600', '700', '800'],
+});
+
+const fontBody = Hanken_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-body',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
-  title: 'DealGuard - Secure Deal Governance',
-  description: 'Enterprise-grade escrow platform for complex business transactions. Evidence-based milestone tracking with AI-assisted workflow management and blockchain-anchored audit trails.',
+  title: 'DealGuard - Escrow released on human approval',
+  description:
+    'DealGuard structures your transaction into evidence-backed milestones. We verify the proof, a person signs off, and only then does anything move. Three protection tiers from governance to full financial custody.',
   icons: {
     icon: '/icon.svg',
   },
@@ -29,8 +34,21 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-      <html lang="en">
-        <body className={inter.className}>
+      <html
+        lang="en"
+        className={`${fontDisplay.variable} ${fontBody.variable}`}
+        suppressHydrationWarning
+      >
+        <head>
+          {/* Mark JS available before paint so reveal animations have their
+              hidden start-state; without JS, content renders fully visible. */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: "document.documentElement.classList.add('js')",
+            }}
+          />
+        </head>
+        <body className="font-sans antialiased">
           <InvitationChecker />
           {children}
           <Toaster />
