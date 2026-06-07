@@ -71,6 +71,9 @@ export interface StorageHealthStatus {
     minio?: boolean;         // Health status of MinIO provider (undefined if not configured)
     local?: boolean;         // Health status of Local provider (undefined if not configured)
   };
+  // Whether a durable primary (S3/R2 or MinIO) is configured at all. Lets
+  // callers tell "no primary set up" apart from "primary configured but failing".
+  primaryConfigured: boolean;
   // Legacy fields for backward compatibility
   primary: boolean;
   fallback: boolean | null;

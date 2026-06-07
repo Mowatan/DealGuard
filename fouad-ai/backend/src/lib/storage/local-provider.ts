@@ -12,6 +12,7 @@ import { promises as fs } from 'fs';
 import * as path from 'path';
 import { createHash } from 'crypto';
 import { StorageProvider, UploadResult, StorageConfig } from './types';
+import { signFilePath } from './file-signing';
 
 export class LocalStorageProvider implements StorageProvider {
   private basePath: string;
@@ -64,7 +65,7 @@ export class LocalStorageProvider implements StorageProvider {
     await fs.writeFile(filePath, buffer);
 
     // Generate public URL for accessing the file
-    const url = `${this.publicUrl}/files/${bucket}/${key}`;
+    const url = this.buildUrl(bucket, key);
 
     return {
       key: `${bucket}/${key}`,
@@ -78,9 +79,20 @@ export class LocalStorageProvider implements StorageProvider {
   }
 
   async getFileUrl(bucket: string, key: string, expirySeconds?: number): Promise<string> {
-    // Local filesystem URLs don't expire (expirySeconds ignored)
-    // In production, you'd add authentication middleware to the /files route
-    return `${this.publicUrl}/files/${bucket}/${key}`;
+    // Local filesystem URLs don't expire (expirySeconds ignored). When
+    // FILES_SIGNING_SECRET is set, an HMAC signature is appended and enforced
+    // by the /files route.
+    return this.buildUrl(bucket, key);
+  }
+
+  /**
+   * Build the public URL for a file, appending an HMAC signature when
+   * FILES_SIGNING_SECRET is configured (otherwise an unsigned URL, unchanged).
+   */
+  private buildUrl(bucket: string, key: string): string {
+    const base = `${this.publicUrl}/files/${bucket}/${key}`;
+    const sig = signFilePath(bucket, key);
+    return sig ? `${base}?sig=${sig}` : base;
   }
 
   async deleteFile(bucket: string, key: string): Promise<void> {

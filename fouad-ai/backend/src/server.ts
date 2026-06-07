@@ -6,6 +6,7 @@ import { promises as fs } from 'fs';
 import * as path from 'path';
 import { prisma } from './lib/prisma';
 import { storage } from './lib/storage';
+import { verifyFileAccess } from './lib/storage/file-signing';
 import { validateEnvironment, printEnvironmentStatus } from './lib/env-validator';
 import { dealsRoutes } from './modules/deals/deals.routes';
 import { contractsRoutes } from './modules/contracts/contracts.routes';
@@ -146,7 +147,10 @@ async function start() {
           storage: {
             current: storageStatus.current,
             providers: {
-              primary: storageStatus.primary ? 'healthy' : 'unhealthy',
+              // "not_configured" means no durable provider (S3/R2 or MinIO) is
+              // set up at all, distinct from one being configured but failing.
+              primary: !storageStatus.primaryConfigured ? 'not_configured' :
+                       (storageStatus.primary ? 'healthy' : 'unhealthy'),
               fallback: storageStatus.fallback === null ? 'disabled' :
                        (storageStatus.fallback ? 'healthy' : 'unhealthy')
             }
@@ -172,6 +176,13 @@ async function start() {
       const validBuckets = ['fouad-documents', 'fouad-evidence'];
       if (!validBuckets.includes(bucket)) {
         return reply.code(403).send({ error: 'Invalid bucket' });
+      }
+
+      // When FILES_SIGNING_SECRET is set, require a valid HMAC signature so
+      // documents cannot be retrieved by guessing keys. No-op when unset.
+      const { sig } = request.query as { sig?: string };
+      if (!verifyFileAccess(bucket, key, sig)) {
+        return reply.code(403).send({ error: 'Invalid or missing file signature' });
       }
 
       // Get local storage path from environment

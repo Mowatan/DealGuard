@@ -84,6 +84,21 @@ export class StorageService {
       throw new Error('No storage provider available. Please configure S3, MinIO, or enable local storage fallback.');
     }
 
+    // Production durability guard. Storing documents/evidence on the container's
+    // ephemeral local disk loses them on every redeploy. Warn loudly always, and
+    // hard-fail when the operator opts in via STORAGE_REQUIRE_DURABLE=true (off by
+    // default so an unconfigured environment degrades instead of crash-looping).
+    if (isProduction && this.currentProvider === this.localProvider) {
+      const message =
+        'STORAGE: running on LocalFileSystem in production. Uploaded documents and ' +
+        'evidence are on ephemeral disk and will be LOST on redeploy. Configure ' +
+        'durable object storage (S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY).';
+      if (process.env.STORAGE_REQUIRE_DURABLE === 'true') {
+        throw new Error(message);
+      }
+      console.error(`🚨 ${message}`);
+    }
+
     // Run health checks on startup
     this.initializeProviders();
   }
@@ -273,6 +288,9 @@ export class StorageService {
     return {
       current: this.currentProvider.getProviderName(),
       providers,
+      // Whether any durable primary (S3/R2 or MinIO) was configured at all.
+      // Distinguishes "no primary set up" from "primary configured but failing".
+      primaryConfigured: !!(this.s3Provider || this.minioProvider),
       primary,
       fallback,
     };
