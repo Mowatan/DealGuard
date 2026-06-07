@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
+import rateLimit from '@fastify/rate-limit';
 import { config } from 'dotenv';
 import { promises as fs } from 'fs';
 import * as path from 'path';
@@ -108,6 +109,17 @@ async function start() {
       limits: {
         fileSize: 50 * 1024 * 1024, // 50MB max file size
       },
+    });
+
+    // Global rate limiting (per-IP). Protects against brute force, webhook
+    // flooding, and enumeration. Individual routes can tighten this via
+    // `config.rateLimit` (e.g. the public inbound-email webhook below).
+    await server.register(rateLimit, {
+      global: true,
+      max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
+      timeWindow: process.env.RATE_LIMIT_WINDOW || '1 minute',
+      // The health check is polled by infrastructure; don't rate-limit it.
+      allowList: (request) => request.url === '/health',
     });
 
     // Root route

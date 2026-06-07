@@ -1,14 +1,101 @@
 import { FastifyInstance } from 'fastify';
+import crypto from 'crypto';
 import { emailProcessingQueue } from '../../lib/queue';
+
+// Reject webhook calls whose signed timestamp is older than this (replay protection)
+const SIGNATURE_MAX_AGE_SECONDS = 15 * 60; // 15 minutes
+
+/**
+ * Verify a Mailgun inbound-route / webhook signature.
+ *
+ * Mailgun signs requests with: signature = HMAC-SHA256(signingKey, timestamp + token).
+ * Fields may arrive flat (form-encoded routes) or nested under a `signature` object
+ * (newer JSON webhooks), so we accept both shapes.
+ *
+ * Returns true only when the signature is present, fresh, and valid.
+ */
+export function verifyMailgunSignature(body: any): boolean {
+  const signingKey =
+    process.env.INBOUND_EMAIL_WEBHOOK_SECRET || process.env.MAILGUN_API_KEY;
+
+  // Fail closed: without a signing key we cannot authenticate the caller.
+  if (!signingKey) {
+    return false;
+  }
+
+  const sig = body?.signature && typeof body.signature === 'object' ? body.signature : body;
+  const timestamp = sig?.timestamp;
+  const token = sig?.token;
+  const signature = sig?.signature;
+
+  if (!timestamp || !token || !signature) {
+    return false;
+  }
+
+  // Replay protection: reject stale timestamps.
+  const ageSeconds = Math.abs(Date.now() / 1000 - Number(timestamp));
+  if (!Number.isFinite(ageSeconds) || ageSeconds > SIGNATURE_MAX_AGE_SECONDS) {
+    return false;
+  }
+
+  const expected = crypto
+    .createHmac('sha256', signingKey)
+    .update(`${timestamp}${token}`)
+    .digest('hex');
+
+  // Constant-time comparison to prevent timing attacks.
+  const expectedBuf = Buffer.from(expected, 'hex');
+  let providedBuf: Buffer;
+  try {
+    providedBuf = Buffer.from(String(signature), 'hex');
+  } catch {
+    return false;
+  }
+
+  if (expectedBuf.length !== providedBuf.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(expectedBuf, providedBuf);
+}
 
 export async function webhookRoutes(server: FastifyInstance) {
   // Inbound email webhook (Mailgun/Sendgrid format)
-  server.post('/email/inbound', async (request, reply) => {
+  server.post('/email/inbound', {
+    config: {
+      // Tighter than the global limit: this endpoint is public (signature-gated).
+      rateLimit: {
+        max: parseInt(process.env.WEBHOOK_RATE_LIMIT_MAX || '30', 10),
+        timeWindow: process.env.WEBHOOK_RATE_LIMIT_WINDOW || '1 minute',
+      },
+    },
+  }, async (request, reply) => {
     try {
       const body = request.body as any;
 
-      // Verify webhook signature if configured
-      // TODO: Implement signature verification based on email provider
+      // Verify webhook signature before trusting any of the payload.
+      // Inbound evidence drives fund-release decisions, so unauthenticated
+      // callers must never be able to inject EvidenceItems.
+      const isProduction = process.env.NODE_ENV === 'production';
+      const signatureValid = verifyMailgunSignature(body);
+
+      if (!signatureValid) {
+        const secretConfigured = !!(
+          process.env.INBOUND_EMAIL_WEBHOOK_SECRET || process.env.MAILGUN_API_KEY
+        );
+
+        // In production we always reject. In non-production we also reject when a
+        // secret IS configured; we only allow through when no secret is set at all
+        // (local development) and log a loud warning.
+        if (isProduction || secretConfigured) {
+          request.log.warn('Rejected inbound email webhook: invalid or missing signature');
+          return reply.code(401).send({ error: 'Invalid webhook signature' });
+        }
+
+        request.log.warn(
+          '⚠️  Inbound email webhook signature NOT verified (no INBOUND_EMAIL_WEBHOOK_SECRET/MAILGUN_API_KEY set). This is only acceptable in local development.'
+        );
+      }
 
       // Parse email data (this is a simplified version)
       const emailData = {
