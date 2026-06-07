@@ -3,6 +3,7 @@ import { approvalService } from './approval.service';
 import { authenticate } from '../../middleware/auth';
 import { requireEscrowOfficer, requireSeniorEscrowOfficer, requireSuperAdmin } from '../../middleware/authorize';
 import { prisma } from '../../lib/prisma';
+import { canUserAccessApproval } from '../../lib/authorization';
 
 export async function approvalRoutes(server: FastifyInstance) {
 
@@ -35,6 +36,10 @@ export async function approvalRoutes(server: FastifyInstance) {
   server.get('/api/approvals/:id', {
     preHandler: [authenticate]
   }, async (req: any, reply) => {
+    if (!(await canUserAccessApproval(req.params.id, req.user.id))) {
+      return reply.code(403).send({ error: 'Forbidden: no access to this approval request' });
+    }
+
     const approval = await prisma.approvalRequest.findUnique({
       where: { id: req.params.id },
       include: {

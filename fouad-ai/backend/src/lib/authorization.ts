@@ -117,6 +117,54 @@ export async function canUserAccessCustodyRecord(recordId: string, userId: strin
 }
 
 /**
+ * Get dealId from partyId and check access
+ */
+export async function canUserAccessParty(partyId: string, userId: string): Promise<boolean> {
+  const party = await prisma.party.findUnique({
+    where: { id: partyId },
+    select: { dealId: true },
+  });
+
+  if (!party) {
+    return false;
+  }
+
+  return canUserAccessDeal(party.dealId, userId);
+}
+
+/**
+ * Get dealId from disputeId and check access
+ */
+export async function canUserAccessDispute(disputeId: string, userId: string): Promise<boolean> {
+  const dispute = await prisma.dispute.findUnique({
+    where: { id: disputeId },
+    select: { dealId: true },
+  });
+
+  if (!dispute) {
+    return false;
+  }
+
+  return canUserAccessDeal(dispute.dealId, userId);
+}
+
+/**
+ * Get dealId from approvalRequestId and check access
+ */
+export async function canUserAccessApproval(approvalId: string, userId: string): Promise<boolean> {
+  const approval = await prisma.approvalRequest.findUnique({
+    where: { id: approvalId },
+    select: { dealId: true },
+  });
+
+  if (!approval) {
+    return false;
+  }
+
+  return canUserAccessDeal(approval.dealId, userId);
+}
+
+/**
  * Check if user has admin or case officer role
  */
 export async function isAdminOrCaseOfficer(userId: string): Promise<boolean> {

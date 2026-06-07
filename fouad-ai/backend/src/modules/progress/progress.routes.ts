@@ -1,6 +1,10 @@
 import { FastifyPluginAsync } from 'fastify';
 import * as progressService from './progress.service';
 import { authenticate } from '../../middleware/auth';
+import { authorize } from '../../middleware/authorize';
+
+const statusForError = (error: any) =>
+  error instanceof Error && error.message.includes('Unauthorized') ? 403 : 500;
 
 export const progressRoutes: FastifyPluginAsync = async (fastify) => {
   // REMOVED: Duplicate route - GET /deals/:dealId/progress is already handled in deals.routes.ts
@@ -18,7 +22,7 @@ export const progressRoutes: FastifyPluginAsync = async (fastify) => {
       const events = await progressService.initializeProgressTracker(dealId, user.id);
       return { events };
     } catch (error: any) {
-      reply.status(500).send({ error: error.message });
+      reply.status(statusForError(error)).send({ error: error.message });
     }
   });
 
@@ -40,7 +44,7 @@ export const progressRoutes: FastifyPluginAsync = async (fastify) => {
 
       return result;
     } catch (error: any) {
-      reply.status(500).send({ error: error.message });
+      reply.status(statusForError(error)).send({ error: error.message });
     }
   });
 
@@ -63,20 +67,20 @@ export const progressRoutes: FastifyPluginAsync = async (fastify) => {
 
       return stage;
     } catch (error: any) {
-      reply.status(500).send({ error: error.message });
+      reply.status(statusForError(error)).send({ error: error.message });
     }
   });
 
-  // Get all deals in a specific stage
+  // Get all deals in a specific stage (staff-only: cross-deal enumeration)
   fastify.get('/progress/stages/:stageKey/deals', {
-    preHandler: [authenticate]
+    preHandler: [authenticate, authorize(['CASE_OFFICER'])]
   }, async (request, reply) => {
     try {
       const { stageKey } = request.params as { stageKey: string };
       const deals = await progressService.getDealsInStage(stageKey);
       return { deals };
     } catch (error: any) {
-      reply.status(500).send({ error: error.message });
+      reply.status(statusForError(error)).send({ error: error.message });
     }
   });
 };

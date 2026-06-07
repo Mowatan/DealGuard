@@ -3,6 +3,7 @@ import { z } from 'zod';
 import * as custodyDocService from './custody-documents.service';
 import { authenticate } from '../../middleware/auth';
 import { requireAdmin } from '../../middleware/authorize';
+import { canUserAccessDeal } from '../../lib/authorization';
 import { CustodyDocumentType, DeliveryMethod } from '@prisma/client';
 
 const createCustodyDocumentSchema = z.object({
@@ -177,6 +178,11 @@ export async function custodyDocumentsRoutes(server: FastifyInstance) {
     async (request, reply) => {
       try {
         const { dealId } = request.params as { dealId: string };
+
+        if (!(await canUserAccessDeal(dealId, request.user!.id))) {
+          return reply.code(403).send({ error: 'Forbidden: no access to this deal' });
+        }
+
         const documents = await custodyDocService.getCustodyDocumentsByDeal(dealId);
         return documents;
       } catch (error) {

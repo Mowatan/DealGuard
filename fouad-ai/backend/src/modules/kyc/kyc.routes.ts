@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import * as kycService from './kyc.service';
 import { authenticate } from '../../middleware/auth';
 import { authorize } from '../../middleware/authorize';
+import { canUserAccessParty } from '../../lib/authorization';
 
 export default async function kycRoutes(fastify: FastifyInstance) {
   // Upload KYC document
@@ -14,6 +15,10 @@ export default async function kycRoutes(fastify: FastifyInstance) {
 
       if (!userId) {
         return reply.code(401).send({ error: 'User not authenticated' });
+      }
+
+      if (!(await canUserAccessParty(partyId, userId))) {
+        return reply.code(403).send({ error: 'Forbidden: no access to this party' });
       }
 
       try {
@@ -52,6 +57,10 @@ export default async function kycRoutes(fastify: FastifyInstance) {
         return reply.code(401).send({ error: 'User not authenticated' });
       }
 
+      if (!(await canUserAccessParty(partyId, userId))) {
+        return reply.code(403).send({ error: 'Forbidden: no access to this party' });
+      }
+
       try {
         const party = await kycService.submitForVerification(partyId, userId);
         return reply.send(party);
@@ -67,6 +76,15 @@ export default async function kycRoutes(fastify: FastifyInstance) {
     { preHandler: [authenticate] },
     async (request, reply) => {
       const { partyId } = request.params as { partyId: string };
+      const userId = request.user?.id;
+
+      if (!userId) {
+        return reply.code(401).send({ error: 'User not authenticated' });
+      }
+
+      if (!(await canUserAccessParty(partyId, userId))) {
+        return reply.code(403).send({ error: 'Forbidden: no access to this party' });
+      }
 
       try {
         const status = await kycService.getKYCStatus(partyId);
@@ -83,6 +101,15 @@ export default async function kycRoutes(fastify: FastifyInstance) {
     { preHandler: [authenticate] },
     async (request, reply) => {
       const { partyId } = request.params as { partyId: string };
+      const userId = request.user?.id;
+
+      if (!userId) {
+        return reply.code(401).send({ error: 'User not authenticated' });
+      }
+
+      if (!(await canUserAccessParty(partyId, userId))) {
+        return reply.code(403).send({ error: 'Forbidden: no access to this party' });
+      }
 
       try {
         const urls = await kycService.getKYCDocumentUrls(partyId);
