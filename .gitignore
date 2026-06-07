@@ -1,2 +1,5 @@
 fouad-ai/backend/.env.backup
 fouad-ai/static_analysis_semgrep_*/
+
+# Third-party agent skills installed via `npx skills add` (machine-specific, reproducible)
+.agents/
