@@ -45,9 +45,10 @@ describe('verifyMailgunSignature', () => {
   it('rejects a tampered signature', () => {
     const timestamp = freshTimestamp();
     const token = 'abc123';
-    expect(
-      verifyMailgunSignature({ timestamp, token, signature: sign(timestamp, token).replace(/.$/, '0') })
-    ).toBe(false);
+    const valid = sign(timestamp, token);
+    // Deterministically flip the first hex char so the signature always differs.
+    const tampered = (valid[0] === '0' ? '1' : '0') + valid.slice(1);
+    expect(verifyMailgunSignature({ timestamp, token, signature: tampered })).toBe(false);
   });
 
   it('rejects a signature made with the wrong key', () => {

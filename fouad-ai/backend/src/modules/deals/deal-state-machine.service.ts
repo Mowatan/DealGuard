@@ -70,9 +70,16 @@ export async function checkAndActivateDeal(
     };
   }
 
-  // Check 2: If milestones exist, all must be approved
+  // Check 2: A deal cannot activate without an effective contract.
+  // Defined degrade (not a throw): refuse activation with a clear reason so
+  // callers receive a graceful result instead of an unhandled exception.
   if (!deal.contracts || deal.contracts.length === 0) {
-    throw new Error('Cannot activate deal without contract');
+    return {
+      activated: false,
+      status: deal.status,
+      reason: 'Cannot activate: deal has no effective contract',
+      nextStep: 'An effective contract must exist before the deal can activate',
+    };
   }
   const contract = deal.contracts[0];
   if (contract && contract.milestones.length > 0) {
