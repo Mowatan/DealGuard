@@ -76,7 +76,7 @@ export function ProgressTracker({ dealId }: ProgressTrackerProps) {
         throw new Error('Authentication required');
       }
 
-      const res = await fetch(`/api/deals/${dealId}/progress`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/deals/${dealId}/progress`, {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',

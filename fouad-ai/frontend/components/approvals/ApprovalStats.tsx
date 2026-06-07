@@ -34,7 +34,7 @@ export function ApprovalStats({ userRole }: ApprovalStatsProps) {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/approvals/stats', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/approvals/stats`, {
         headers: {
           'Authorization': `Bearer ${await getToken()}`,
         },

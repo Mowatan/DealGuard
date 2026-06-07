@@ -43,7 +43,7 @@ export function DealProgress({ dealId }: { dealId: string }) {
   const fetchProgress = async () => {
     try {
       const token = await getToken();
-      const res = await fetch(`/api/deals/${dealId}/progress`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/deals/${dealId}/progress`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

@@ -69,7 +69,7 @@ export function ApprovalRequestList({ userRole, status }: ApprovalRequestListPro
         }
       }
 
-      const response = await fetch(`/api/approvals?${params}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/approvals?${params}`, {
         headers: {
           'Authorization': `Bearer ${await getToken()}`,
         },
