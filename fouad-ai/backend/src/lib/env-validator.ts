@@ -62,6 +62,16 @@ export function validateEnvironment(): EnvValidationResult {
     warnings.push('EMAIL_FROM not set - using default sender');
   }
 
+  // CRITICAL: Inbound email webhook signature verification.
+  // Without a signing key, forged inbound emails could inject evidence.
+  // The webhook handler fails closed in production, so a missing key here
+  // means inbound email evidence will be rejected outright.
+  if (isProduction && !process.env.INBOUND_EMAIL_WEBHOOK_SECRET && !process.env.MAILGUN_API_KEY) {
+    errors.push(
+      'INBOUND_EMAIL_WEBHOOK_SECRET (or MAILGUN_API_KEY) must be set in production to verify inbound email webhooks'
+    );
+  }
+
   // CRITICAL: Durable file storage (required in PRODUCTION only).
   // Without S3/R2 (or MinIO) credentials, StorageService silently falls back to
   // the local filesystem, which is EPHEMERAL on most hosts (e.g. Railway) — every

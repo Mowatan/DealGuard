@@ -4,7 +4,8 @@
 # Uses x-test-user-id and x-test-secret headers for testing
 
 API_BASE="http://localhost:4000/api"
-TEST_SECRET="test-secret-67bddf9d630910410891f8bc3ae03b53"
+# Read the test-auth secret from the environment (matches backend/.env).
+TEST_SECRET="${CONTRACT_TEST_SECRET:-test-secret-67bddf9d630910410891f8bc3ae03b53}"
 
 # Colors
 GREEN='\033[0;32m'
@@ -18,36 +19,19 @@ echo -e "${BLUE}Amendment & Deletion System - Simple Test${NC}"
 echo -e "${BLUE}============================================${NC}"
 echo ""
 
-# Function to create a test user if needed
-create_test_user() {
-  echo -e "${BLUE}Creating test user...${NC}"
-
-  RESPONSE=$(curl -s -X POST "$API_BASE/users/register" \
-    -H "Content-Type: application/json" \
-    -d '{
-      "email": "testadmin@dealguard.com",
-      "password": "TestPass123!",
-      "name": "Test Admin",
-      "role": "ADMIN"
-    }' 2>&1)
-
-  if echo "$RESPONSE" | grep -q "id"; then
-    TEST_USER_ID=$(echo "$RESPONSE" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
-    echo -e "${GREEN}✓ Test user created: $TEST_USER_ID${NC}"
-    echo "$TEST_USER_ID"
-  elif echo "$RESPONSE" | grep -q "already exists"; then
-    echo -e "${YELLOW}⚠ User already exists, fetching ID...${NC}"
-    # For now, we'll use a hardcoded ID or skip this
-    echo "clv7j8kl60000356o8h0ycqkx" # Placeholder
-  else
-    echo -e "${RED}✗ Failed to create user${NC}"
-    echo "$RESPONSE"
-    echo "clv7j8kl60000356o8h0ycqkx" # Fallback
-  fi
-}
-
-# Get test user ID
-TEST_USER_ID=$(create_test_user)
+# Auth is Clerk-only in production; the legacy /register endpoint was removed.
+# Provide a seeded user's ID via the TEST_USER_ID env var. To find one after
+# running `npm run prisma:seed`:
+#   npx prisma studio   (copy a User id, e.g. a seeded ADMIN)
+# The backend must run with ENABLE_CONTRACT_TEST_AUTH=true and a matching
+# CONTRACT_TEST_SECRET so the x-test-user-id / x-test-secret headers are honored.
+if [ -z "$TEST_USER_ID" ]; then
+  echo -e "${RED}✗ TEST_USER_ID is not set.${NC}"
+  echo -e "${YELLOW}  Set it to a seeded user's id, e.g.:${NC}"
+  echo -e "${YELLOW}    TEST_USER_ID=<seeded-admin-id> bash $0${NC}"
+  exit 1
+fi
+echo -e "${GREEN}✓ Using test user: $TEST_USER_ID${NC}"
 echo ""
 
 # Test 1: Create a deal
