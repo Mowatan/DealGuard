@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
+import rateLimit from '@fastify/rate-limit';
 import { config } from 'dotenv';
 import { promises as fs } from 'fs';
 import * as path from 'path';
@@ -110,6 +111,17 @@ async function start() {
       },
     });
 
+    // Global rate limiting (per-IP). Protects against brute force, webhook
+    // flooding, and enumeration. Individual routes can tighten this via
+    // `config.rateLimit` (e.g. the public inbound-email webhook below).
+    await server.register(rateLimit, {
+      global: true,
+      max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
+      timeWindow: process.env.RATE_LIMIT_WINDOW || '1 minute',
+      // The health check is polled by infrastructure; don't rate-limit it.
+      allowList: (request) => request.url === '/health',
+    });
+
     // Root route
     server.get('/', async () => {
       return {
@@ -174,9 +186,23 @@ async function start() {
         return reply.code(403).send({ error: 'Invalid bucket' });
       }
 
+      // Security: Reject keys that could traverse outside the bucket directory.
+      // Legitimate keys are flat (`{timestamp}-{hash8}-{filename}`); a key
+      // containing path separators or `..` (possibly via %2F-encoded slashes)
+      // must never be allowed to escape the storage root.
+      if (key.includes('..') || key.includes('/') || key.includes('\\') || key.includes('\0')) {
+        return reply.code(400).send({ error: 'Invalid file key' });
+      }
+
       // Get local storage path from environment
       const localStoragePath = process.env.STORAGE_LOCAL_PATH || '/app/uploads';
-      const filePath = path.join(localStoragePath, bucket, key);
+      const bucketDir = path.resolve(localStoragePath, bucket);
+      const filePath = path.resolve(bucketDir, key);
+
+      // Defense in depth: ensure the resolved path stays within the bucket dir.
+      if (filePath !== bucketDir && !filePath.startsWith(bucketDir + path.sep)) {
+        return reply.code(400).send({ error: 'Invalid file key' });
+      }
 
       try {
         // Check file exists and is readable

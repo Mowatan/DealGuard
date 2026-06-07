@@ -10,8 +10,10 @@ const ROLE_HIERARCHY: Record<UserRole, number> = {
   ESCROW_OFFICER: 2,            // Level 1: Can review, suggest, recommend
   CASE_OFFICER: 2,              // Legacy role - same level as ESCROW_OFFICER
   SENIOR_ESCROW_OFFICER: 3,     // Level 2: Can approve/reject officer recommendations
-  ADMIN: 3,                     // Legacy admin role
-  SUPER_ADMIN: 4,               // Level 3: Override everything, manage authority
+  ADMIN: 4,                     // Admin: outranks senior escrow officers. Gates
+                                // fund/custody verify+authorize, KYC, disputes.
+                                // A SENIOR_ESCROW_OFFICER must NOT reach these.
+  SUPER_ADMIN: 5,               // Level 3: Override everything, manage authority
 };
 
 /**

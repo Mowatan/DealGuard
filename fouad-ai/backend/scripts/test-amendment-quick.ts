@@ -3,9 +3,13 @@
  * Tests the core functionality with simplified authentication
  */
 
+import 'dotenv/config';
 import axios from 'axios';
+import { PrismaClient } from '@prisma/client';
 
 const API_BASE = 'http://localhost:4000/api';
+const prisma = new PrismaClient();
+const TEST_SECRET = process.env.CONTRACT_TEST_SECRET;
 
 // ANSI colors
 const green = '\x1b[32m';
@@ -14,9 +18,19 @@ const yellow = '\x1b[33m';
 const blue = '\x1b[34m';
 const reset = '\x1b[0m';
 
-let authToken = '';
+let testUserId = '';
 let testDealId = '';
 let testPartyIds: string[] = [];
+
+// Auth headers for the production-safe test-auth override (see middleware/auth.ts).
+// The backend must run with NODE_ENV != production, ENABLE_CONTRACT_TEST_AUTH=true,
+// and a matching CONTRACT_TEST_SECRET, from localhost.
+function authHeaders() {
+  return {
+    'x-test-user-id': testUserId,
+    'x-test-secret': TEST_SECRET as string,
+  };
+}
 
 function log(msg: string, color = reset) {
   console.log(`${color}${msg}${reset}`);
@@ -52,36 +66,24 @@ async function setupTestUser() {
   section('Setting Up Test User');
 
   try {
-    // Try to create a test user
-    const email = `test-${Date.now()}@dealguard.com`;
-    const password = 'TestPass123!';
-
-    info('Creating test user...');
-    try {
-      await axios.post(`${API_BASE}/users/register`, {
-        email,
-        password,
-        name: 'Test User',
-        role: 'ADMIN',
-      });
-      success('Test user created');
-    } catch (err: any) {
-      if (err.response?.status === 409) {
-        info('User already exists, will try to login');
-      } else {
-        throw err;
-      }
+    // Auth is now Clerk-only in production; the legacy /register + /login
+    // endpoints were removed. For local testing we use the test-auth override,
+    // which authenticates as a real seeded user via x-test-* headers.
+    if (!TEST_SECRET) {
+      error('CONTRACT_TEST_SECRET is not set (add it to backend/.env).');
+      return false;
     }
 
-    // Login
-    info('Logging in...');
-    const loginResponse = await axios.post(`${API_BASE}/users/login`, {
-      email,
-      password,
-    });
+    info('Resolving a seeded ADMIN user for the test-auth override...');
+    const admin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
+    if (!admin) {
+      error('No ADMIN user found. Run `npm run prisma:seed` first.');
+      return false;
+    }
 
-    authToken = loginResponse.data.token;
-    success('Authenticated successfully');
+    testUserId = admin.id;
+    success(`Using test user ${admin.email} (${testUserId})`);
+    info('Backend must run with ENABLE_CONTRACT_TEST_AUTH=true and a matching CONTRACT_TEST_SECRET.');
 
     return true;
   } catch (err: any) {
@@ -128,7 +130,7 @@ async function testPhase1Update() {
         creatorEmail: 'test@dealguard.com',
       },
       {
-        headers: { Authorization: `Bearer ${authToken}` },
+        headers: authHeaders(),
       }
     );
 
@@ -150,7 +152,7 @@ async function testPhase1Update() {
         totalAmount: 15000,
       },
       {
-        headers: { Authorization: `Bearer ${authToken}` },
+        headers: authHeaders(),
       }
     );
 
@@ -203,7 +205,7 @@ async function testPhase1Delete() {
         creatorEmail: 'test@dealguard.com',
       },
       {
-        headers: { Authorization: `Bearer ${authToken}` },
+        headers: authHeaders(),
       }
     );
 
@@ -217,7 +219,7 @@ async function testPhase1Delete() {
     const deleteResponse = await axios.delete(
       `${API_BASE}/deals/${dealToDelete}`,
       {
-        headers: { Authorization: `Bearer ${authToken}` },
+        headers: authHeaders(),
         data: { reason: 'Testing unilateral deletion' },
       }
     );
@@ -244,7 +246,7 @@ async function testPhase2Proposal() {
     // First, accept the deal as a party
     info('Simulating party acceptance...');
     const dealResponse = await axios.get(`${API_BASE}/deals/${testDealId}`, {
-      headers: { Authorization: `Bearer ${authToken}` },
+      headers: authHeaders(),
     });
 
     const firstParty = dealResponse.data.parties[0];
@@ -270,7 +272,7 @@ async function testPhase2Proposal() {
           totalAmount: 99999,
         },
         {
-          headers: { Authorization: `Bearer ${authToken}` },
+          headers: authHeaders(),
         }
       );
       error('Direct update succeeded - this is wrong!');
@@ -296,7 +298,7 @@ async function testPhase2Proposal() {
         },
       },
       {
-        headers: { Authorization: `Bearer ${authToken}` },
+        headers: authHeaders(),
       }
     );
 
@@ -379,8 +381,12 @@ async function runTests() {
   process.exit(failed > 0 ? 1 : 0);
 }
 
-runTests().catch((err) => {
-  error('Test crashed');
-  console.error(err);
-  process.exit(1);
-});
+runTests()
+  .catch((err) => {
+    error('Test crashed');
+    console.error(err);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
