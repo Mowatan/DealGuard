@@ -58,7 +58,7 @@ export async function custodyRoutes(server: FastifyInstance) {
     },
     async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { verifiedBy } = request.body as any;
+    const verifiedBy = request.user!.id; // attribute to the authenticated admin, never client-supplied
 
     const record = await custodyService.verifyFunding(id, verifiedBy);
     return record;
@@ -72,7 +72,8 @@ export async function custodyRoutes(server: FastifyInstance) {
     },
     async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { action, authorizedBy } = request.body as any; // action: RELEASE | RETURN
+    const { action } = request.body as any; // action: RELEASE | RETURN
+    const authorizedBy = request.user!.id; // attribute to the authenticated admin, never client-supplied
 
     const record = await custodyService.authorizeAction(id, action, authorizedBy);
     return record;

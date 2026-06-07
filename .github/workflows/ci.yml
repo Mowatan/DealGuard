@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+jobs:
+  backend:
+    name: backend build + authorization tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: fouad-ai/backend
+    env:
+      # prisma generate runs on postinstall and only reads the schema; a dummy
+      # URL keeps it quiet. No database is needed — the authorization tests mock Prisma.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: fouad-ai/backend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Build (tsc)
+        run: npm run build
+      - name: Authorization tests
+        run: npx jest authorization --ci

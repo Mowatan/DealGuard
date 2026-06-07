@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import * as disputesService from './disputes.service';
 import { authenticate } from '../../middleware/auth';
 import { authorize } from '../../middleware/authorize';
+import { canUserAccessDeal, canUserAccessDispute } from '../../lib/authorization';
 
 export default async function disputesRoutes(fastify: FastifyInstance) {
   // Create dispute
@@ -49,6 +50,15 @@ export default async function disputesRoutes(fastify: FastifyInstance) {
     { preHandler: [authenticate] },
     async (request, reply) => {
       const { id } = request.params as { id: string };
+      const userId = request.user?.id;
+
+      if (!userId) {
+        return reply.code(401).send({ error: 'User not authenticated' });
+      }
+
+      if (!(await canUserAccessDispute(id, userId))) {
+        return reply.code(403).send({ error: 'Forbidden: no access to this dispute' });
+      }
 
       try {
         const dispute = await disputesService.getDisputeById(id);
@@ -65,6 +75,15 @@ export default async function disputesRoutes(fastify: FastifyInstance) {
     { preHandler: [authenticate] },
     async (request, reply) => {
       const { dealId } = request.params as { dealId: string };
+      const userId = request.user?.id;
+
+      if (!userId) {
+        return reply.code(401).send({ error: 'User not authenticated' });
+      }
+
+      if (!(await canUserAccessDeal(dealId, userId))) {
+        return reply.code(403).send({ error: 'Forbidden: no access to this deal' });
+      }
 
       try {
         const disputes = await disputesService.listDisputesByDeal(dealId);

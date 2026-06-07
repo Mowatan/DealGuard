@@ -2,6 +2,7 @@ import { prisma } from '../../lib/prisma';
 import { createAuditLog } from '../../lib/audit';
 import { emailSendingQueue } from '../../lib/queue';
 import { getStagesForDeal } from './stage-templates';
+import { canUserAccessDeal } from '../../lib/authorization';
 import { ProgressStageStatus } from '@prisma/client';
 
 /**
@@ -9,6 +10,10 @@ import { ProgressStageStatus } from '@prisma/client';
  * Creates progress events for all stages based on transaction type and service tier
  */
 export async function initializeProgressTracker(dealId: string, userId: string) {
+  if (!(await canUserAccessDeal(dealId, userId))) {
+    throw new Error('Unauthorized: no access to this deal');
+  }
+
   const deal = await prisma.deal.findUnique({
     where: { id: dealId },
     include: { progressEvents: true }
@@ -76,6 +81,10 @@ export async function advanceStage(
   completedBy: string,
   notes?: string
 ) {
+  if (!(await canUserAccessDeal(dealId, completedBy))) {
+    throw new Error('Unauthorized: no access to this deal');
+  }
+
   // Mark current stage as completed
   const currentStage = await prisma.dealProgressEvent.update({
     where: { dealId_stageKey: { dealId, stageKey: currentStageKey } },
@@ -185,6 +194,10 @@ export async function updateStageStatus(
   notes?: string,
   updatedBy?: string
 ) {
+  if (!updatedBy || !(await canUserAccessDeal(dealId, updatedBy))) {
+    throw new Error('Unauthorized: no access to this deal');
+  }
+
   const stage = await prisma.dealProgressEvent.update({
     where: { dealId_stageKey: { dealId, stageKey } },
     data: {
