@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Shield,
@@ -34,6 +34,15 @@ const NAV = [
 
 export function LandingHeader() {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
@@ -72,7 +81,7 @@ export function LandingHeader() {
             </Link>
             <Link
               href="/sign-up"
-              className="rounded-xl bg-clay px-5 py-2.5 text-sm font-semibold text-clay-foreground shadow-sm transition-colors hover:bg-clay/90"
+              className="rounded-xl bg-clay px-5 py-2.5 text-sm font-semibold text-clay-foreground shadow-sm transition-colors hover:bg-clay/90 active:translate-y-px"
             >
               Start a deal
             </Link>
@@ -86,7 +95,7 @@ export function LandingHeader() {
             </Link>
             <Link
               href="/deals/new"
-              className="rounded-xl bg-clay px-5 py-2.5 text-sm font-semibold text-clay-foreground shadow-sm transition-colors hover:bg-clay/90"
+              className="rounded-xl bg-clay px-5 py-2.5 text-sm font-semibold text-clay-foreground shadow-sm transition-colors hover:bg-clay/90 active:translate-y-px"
             >
               New deal
             </Link>
@@ -100,7 +109,7 @@ export function LandingHeader() {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex h-10 w-10 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-muted md:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:hidden"
           aria-label={open ? 'Close menu' : 'Open menu'}
           aria-expanded={open}
         >
@@ -197,14 +206,14 @@ export function HeroSection() {
           <Reveal delay={180} className="flex flex-col gap-3 sm:flex-row">
             <Link
               href="/sign-up"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-clay px-7 py-3.5 text-sm font-semibold text-clay-foreground shadow-sm transition-colors hover:bg-clay/90"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-clay px-7 py-3.5 text-sm font-semibold text-clay-foreground shadow-sm transition-colors hover:bg-clay/90 active:translate-y-px"
             >
               Start a deal
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               href="#how-it-works"
-              className="inline-flex items-center justify-center rounded-xl border border-border bg-card px-7 py-3.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+              className="inline-flex items-center justify-center rounded-xl border border-border bg-card px-7 py-3.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted active:translate-y-px"
             >
               See how it works
             </Link>
@@ -462,7 +471,7 @@ export function FeaturesSection() {
       <div className="mx-auto max-w-6xl px-6">
         <Reveal className="mx-auto mb-14 max-w-2xl text-center">
           <h2 className="text-balance text-[clamp(1.85rem,4vw,2.75rem)] font-bold text-foreground">
-            What does the work behind the scenes
+            Everything working behind the scenes
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
             The pieces that turn a risky handoff into a process you can both

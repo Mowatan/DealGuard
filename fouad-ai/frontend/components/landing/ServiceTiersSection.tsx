@@ -203,18 +203,20 @@ function TierCard({ tier }: { tier: Tier }) {
         </ul>
       </div>
 
-      <Link
-        href={tier.href}
-        className={cn(
-          'mt-7 inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-colors',
-          tier.featured
-            ? 'bg-clay text-clay-foreground shadow-sm hover:bg-clay/90'
-            : 'border border-border bg-background text-foreground hover:bg-muted',
-        )}
-      >
-        Start a deal
-        <ArrowRight className="h-4 w-4" />
-      </Link>
+      <div className="mt-auto pt-7">
+        <Link
+          href={tier.href}
+          className={cn(
+            'inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-colors active:translate-y-px',
+            tier.featured
+              ? 'bg-clay text-clay-foreground shadow-sm hover:bg-clay/90'
+              : 'border border-border bg-background text-foreground hover:bg-muted',
+          )}
+        >
+          Start a deal
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
     </div>
   );
 }

@@ -34,11 +34,11 @@
     --border: 152 16% 88%;
     --input: 152 16% 88%;
     --ring: 166 56% 22%;
-    /* Warm signal, used only where the visitor acts. */
-    --clay: 13 74% 45%;
+    /* Warm signal, used only where the visitor acts. AA on white as text. */
+    --clay: 13 76% 43%;
     --clay-foreground: 24 60% 98%;
     --chart-1: 166 56% 22%;
-    --chart-2: 13 74% 45%;
+    --chart-2: 13 76% 43%;
     --chart-3: 192 58% 30%;
     --chart-4: 43 72% 52%;
     --chart-5: 280 28% 46%;
@@ -75,6 +75,17 @@
     font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
     font-weight: 700;
     letter-spacing: -0.02em;
+  }
+  /* Keyboard focus for links and native disclosure summaries, which carry no
+     ring of their own (shadcn buttons handle their own focus-visible ring). */
+  a:focus-visible,
+  summary:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: calc(var(--radius) - 4px);
+  }
+  summary::-webkit-details-marker {
+    display: none;
   }
 }
 
